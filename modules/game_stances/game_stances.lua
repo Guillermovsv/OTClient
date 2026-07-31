@@ -22,13 +22,13 @@ local stanceVisuals = {
     elemental_synthesis = {
         name = 'Elemental Synthesis',
         magic = true,
-        tooltip = '+10 Earth element damage.\n+10 Ice element damage.'
+        tooltip = '+10 Ice and Earth Magic level.'
     },
     divine_defiance = {
         name = 'Divine Defiance',
         skills = { 'skillId4' },
         magic = true,
-        tooltip = 'Distance power contributes to Holy Magic.\nDistance power contributes to Healing Magic.\nDodge chance is increased.'
+        tooltip = 'Grants 6% of Distance Fighting as holy and healing magic level, as well as 12% Dodge against non adjacent enemies.'
     },
     master_of_flames = {
         name = 'Master of Flames',
@@ -90,10 +90,16 @@ function controllerStances:onInit()
             stanceId = ''
         end
         if state == 'active' and stanceVisuals[stanceId] then
+            if activeStance ~= stanceId and modules.game_stance_spell_visuals then
+                modules.game_stance_spell_visuals.clear()
+            end
             activeStance = stanceId
             applyVisuals()
         elseif state == 'inactive' then
             activeStance = nil
+            if modules.game_stance_spell_visuals then
+                modules.game_stance_spell_visuals.clear()
+            end
             refreshBaseSkills()
         end
     end)
