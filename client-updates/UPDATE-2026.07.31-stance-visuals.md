@@ -49,6 +49,7 @@ $env:VCPKG_ROOT = 'C:\src\vcpkg'
 
 $native = @('client.cpp', 'client.h', 'effect.cpp', 'luafunctions.cpp', 'missile.cpp')
 foreach ($file in $native) {
+    Copy-Item "$FullClient\src\client\$file" "$FullClient\src\client\$file.backup-stance-2026.07.31" -Force
     Copy-Item "$ReleaseAssets\src\client\$file" "$FullClient\src\client\$file" -Force
 }
 
@@ -78,6 +79,18 @@ cmake --build build\windows-debug-msbuild --config Debug --parallel
 
 Use the release/Ninja preset for the distributable client. Use the MSBuild
 preset only when debugging from Visual Studio.
+
+The five files in `src/client/` are complete synchronized files, not a
+standalone patch. Apply them only to the same OTClient baseline from which
+they were produced. If the Windows checkout has local client changes, review
+the backup/diff first and merge the stance hunks instead of blindly replacing
+the file. Keep the backups until the new executable has passed the smoke tests.
+
+The `windows-release` preset declares the toolset required by this checkout.
+If CMake reports that `v145` is unavailable, install the matching Visual
+Studio C++ toolset through Visual Studio Installer, or use the repository's
+compatible MSBuild preset. Do not silently mix an unrelated OTClient branch
+with these files.
 
 Before packaging, verify that the built executable and native module files
 exist:
