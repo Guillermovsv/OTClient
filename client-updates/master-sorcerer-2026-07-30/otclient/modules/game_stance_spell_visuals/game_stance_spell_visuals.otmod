@@ -1,0 +1,9 @@
+Module
+  name: game_stance_spell_visuals
+  description: Server-authoritative Master Sorcerer spell recoloring
+  author: OTC
+  sandboxed: true
+  scripts: [ game_stance_spell_visuals ]
+  autoload: true
+  @onLoad: controllerStanceSpellVisuals:init()
+  @onUnload: controllerStanceSpellVisuals:terminate()
