@@ -1,6 +1,7 @@
 # OTClient release assets
-This repo hosts client release assets and synchronized spell metadata used by
-the desktop client installer/updater.
+This repo hosts client release assets, synchronized spell metadata, and the
+small native hook patch used by the desktop client installer/updater. It is
+not a complete OTClient source checkout and cannot be compiled by itself.
 
 The current spell metadata includes server IDs `298` and `305` for Forked
 Thorns and Forked Glacier, with their 6-second individual cooldowns. Druid
@@ -113,3 +114,10 @@ Each package must include the runtime files, SHA256 checksums, a backup-aware
 installer, the matching server commit/protocol, and MyAAC upload instructions.
 Do not publish a client package without updating the versioned instruction
 file and linking it here.
+
+The native stance recolor hooks are published under `src/client/`. Copy those
+five files into the matching full OTClient checkout and follow the Windows
+CMake instructions in
+[`UPDATE-2026.07.31-stance-visuals.md`](client-updates/UPDATE-2026.07.31-stance-visuals.md)
+before building. A Git push updates this repository only; it does not compile
+or upload the Windows client binary.
