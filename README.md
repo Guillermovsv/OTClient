@@ -37,6 +37,21 @@ The current reserved slots are:
 | Master of Decay | 303 | 193 |
 | Divine Defiance | 304 | 194 |
 
+The six stance artwork sources used for the current atlas are the exact
+repository-side reference files named:
+
+```text
+elementalsynthesis (2) (1).png
+sharedconservation (2) (1).png
+masterofflames (2) (1).png
+masterofthunder (2) (1).png
+masterofdecay (2) (1).png
+divinedefiance (2) (1).png
+```
+
+They are resized into both atlas scales; the standalone 38x38 files are not
+loaded directly by the client.
+
 Do not replace these with the IDs of visually similar standard spells. Do not
 ship the standalone reference PNGs as a substitute for the two horizontal
 atlases.
