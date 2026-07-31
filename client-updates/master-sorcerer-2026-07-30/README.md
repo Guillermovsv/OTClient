@@ -43,7 +43,9 @@ Or pass the checkout path explicitly:
 
 The script creates a timestamped backup under
 data/things/1525/backups/master-sorcerer-2026-07-30/ before replacing files.
-It validates the catalog hash and Lua syntax after copying.
+It validates the package catalog before installation, then validates the
+installed catalog and Lua syntax after copying. An older catalog in the target
+checkout is normal; it is replaced by the package catalog during installation.
 
 ## Release
 

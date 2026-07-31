@@ -11,6 +11,28 @@ source_dir="$package_dir/otclient"
 timestamp="$(date -u '+%Y%m%dT%H%M%SZ')"
 backup_dir="$client_dir/data/things/1525/backups/master-sorcerer-2026-07-30/$timestamp"
 
+package_catalog="$source_dir/data/things/1525/catalog-content.json"
+package_manifest="$source_dir/data/things/1525/assets.json.sha256"
+
+[[ -f "$package_catalog" ]] || {
+  printf 'Missing package catalog: %s\n' "$package_catalog" >&2
+  exit 1
+}
+[[ -f "$package_manifest" ]] || {
+  printf 'Missing package catalog checksum: %s\n' "$package_manifest" >&2
+  exit 1
+}
+
+# Validate the package before looking at the existing checkout. The target may
+# legitimately contain an older catalog; comparing it before replacement would
+# reject a valid update.
+package_catalog_hash="$(shasum -a 256 "$package_catalog" | awk '{print $1}')"
+expected_hash="$(awk 'NF {print $1; exit}' "$package_manifest")"
+[[ "$package_catalog_hash" == "$expected_hash" ]] || {
+  printf 'Package catalog hash mismatch: expected %s, got %s\n' "$expected_hash" "$package_catalog_hash" >&2
+  exit 1
+}
+
 [[ -d "$client_dir/data/things/1525" ]] || {
   printf 'OTClient checkout not found: %s\n' "$client_dir" >&2
   exit 1
@@ -46,7 +68,6 @@ for sheet in "$source_dir"/data/things/1525/sprites-master-sorcerer-*.bmp.lzma; 
 done
 
 catalog_hash="$(shasum -a 256 "$client_dir/data/things/1525/catalog-content.json" | awk '{print $1}')"
-expected_hash="$(awk '{print $1}' "$client_dir/data/things/1525/assets.json.sha256")"
 [[ "$catalog_hash" == "$expected_hash" ]] || {
   printf 'Catalog hash mismatch: expected %s, got %s\n' "$expected_hash" "$catalog_hash" >&2
   exit 1

@@ -54,9 +54,18 @@ The installer backs up every replaced file under:
 data/things/1525/backups/master-sorcerer-2026-07-30/<UTC-timestamp>/
 ~~~
 
-It then verifies the catalog SHA256 and runs Lua syntax checks when luac is
-available. Do not copy only the Lua modules; the appearance catalog and sprite
-sheets are required for effects 352–363.
+It first verifies that the catalog shipped inside the package matches the
+package's `assets.json.sha256`, then copies the files, and finally verifies the
+catalog in the updated checkout. The existing checkout may have an older
+catalog hash; that is expected during an update and must not be compared to
+the new package hash before copying. It also runs Lua syntax checks when luac
+is available. Do not copy only the Lua modules; the appearance catalog and
+sprite sheets are required for effects 352–363.
+
+If a separate updater reports a mismatch between the old target
+`catalog-content.json` and this package's `assets.json.sha256` before copying,
+stop using that updater and run the package's `apply-client-update.sh` instead.
+The package hash is `5b96ce562288b91666c7758171bdfe072cc6556e035809407b2744a3f48f1b7f`.
 
 ## Required effect mapping
 
