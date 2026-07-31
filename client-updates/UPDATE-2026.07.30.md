@@ -42,6 +42,30 @@ Use Git Bash from the root of the full OTClient source checkout:
 ./client-updates/master-sorcerer-2026-07-30/apply-client-update.sh .
 ~~~
 
+### Exact Git Bash commands
+
+Copy and paste the following commands, replacing only `TU_USUARIO` with the
+Windows account name:
+
+~~~bash
+cd "/c/Users/TU_USUARIO/Documents/OT Client"
+git pull --ff-only
+pkg="client-updates/master-sorcerer-2026-07-30/otclient/data/things/1525"
+sha256sum "$pkg/catalog-content.json"
+cat "$pkg/assets.json.sha256"
+./client-updates/master-sorcerer-2026-07-30/apply-client-update.sh .
+~~~
+
+The first two hash outputs must both begin with:
+
+~~~text
+5b96ce562288b91666c7758171bdfe072cc6556e035809407b2744a3f48f1b7f
+~~~
+
+The old hash in the installed checkout may be different before the installer
+runs. That is expected. Do not stop the update because the pre-update target
+catalog has the old hash.
+
 Or run the script by absolute path:
 
 ~~~sh
