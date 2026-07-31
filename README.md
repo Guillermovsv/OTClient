@@ -99,3 +99,16 @@ end
 
 These are client compatibility fixes; they do not change spell IDs, words, or
 server-side damage behavior.
+
+## Versioned client update instructions
+
+Every client release must have one canonical, versioned instruction file under
+`client-updates/UPDATE-YYYY.MM.DD.md`. The current release is:
+
+- [UPDATE-2026.07.30.md](client-updates/UPDATE-2026.07.30.md)
+- [Master Sorcerer package](client-updates/master-sorcerer-2026-07-30/)
+
+Each package must include the runtime files, SHA256 checksums, a backup-aware
+installer, the matching server commit/protocol, and MyAAC upload instructions.
+Do not publish a client package without updating the versioned instruction
+file and linking it here.

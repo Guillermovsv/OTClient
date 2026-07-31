@@ -1,5 +1,7 @@
 # Master Sorcerer client update — 2026-07-30
 
+Canonical instructions: [UPDATE-2026.07.30.md](../UPDATE-2026.07.30.md).
+
 This is the client-side package for the protocol-1525 Master Sorcerer
 animation variants. It must be installed together with the matching server
 appearance catalog. The server effect IDs are:
