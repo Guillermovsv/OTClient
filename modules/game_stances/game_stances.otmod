@@ -1,0 +1,9 @@
+Module
+  name: game_stances
+  description: Stance skill colors and tooltips
+  author: OTC
+  sandboxed: true
+  scripts: [ game_stances ]
+  autoload: true
+  @onLoad: controllerStances:init()
+  @onUnload: controllerStances:terminate()
