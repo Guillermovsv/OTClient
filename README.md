@@ -80,3 +80,22 @@ copy only `spells.lua`.
 Then rebuild/package the Windows client and upload the resulting release
 through MyAAC **Tools → Client Uploads**. The server repository deployment does
 not update these client assets automatically.
+
+## Compatibility fixes for the stance module
+
+`game_stances.otmod` is intentionally not sandboxed because it uses the
+existing `game_skills` functions `setSkillColor` and `setSkillTooltip`. If the
+module remains sandboxed, the client logs `attempt to call global
+'setSkillColor' (a nil value)` when a stance update arrives.
+
+Some older Windows builds also lack the optional `g_things.setHdMode` binding.
+Guard that call in `modules/client_options/data_options.lua` before packaging:
+
+```lua
+if g_things and type(g_things.setHdMode) == 'function' then
+    g_things.setHdMode(value)
+end
+```
+
+These are client compatibility fixes; they do not change spell IDs, words, or
+server-side damage behavior.
