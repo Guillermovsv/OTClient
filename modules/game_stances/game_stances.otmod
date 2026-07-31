@@ -2,7 +2,9 @@ Module
   name: game_stances
   description: Stance skill colors and tooltips
   author: OTC
-  sandboxed: true
+  # This module calls the existing game_skills helper functions
+  # setSkillColor/setSkillTooltip, which are legacy globals in the base client.
+  sandboxed: false
   scripts: [ game_stances ]
   autoload: true
   @onLoad: controllerStances:init()
