@@ -12,6 +12,33 @@ The client first sends the login request to port `8088`. The login response
 must advertise `game.delyriumzot.com` and port `7172`; the client then opens a
 direct TCP connection to Canary on that game port.
 
+## Configuration used by our OTC build
+
+The Delyriumz OTC build uses this exact `Servers_init` entry in `init.lua`:
+
+```lua
+["http://game.delyriumzot.com:8088/login"] = {
+    port = 7172,
+    protocol = 1525,
+    httpLogin = true,
+    useAuthenticator = false
+}
+```
+
+The `port = 7172` value is the configured game-world port. Because the host is
+an HTTP URL, `modules/client_entergame/entergame.lua` extracts `8088` from the
+URL and uses it for the HTTP login request. After character selection, the
+world entry returned by `login-server` directs the OTC to Canary on TCP port
+`7172`.
+
+Therefore, the required game forwarding rule is:
+
+```text
+public 7172/TCP -> Canary container 7172/TCP
+```
+
+Do not forward the OTC game connection to `7171`, `8088`, or `9090`.
+
 ## Proxy requirements
 
 Dokploy/Traefik may proxy the HTTP login endpoint on port `8088`, but the
