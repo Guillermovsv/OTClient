@@ -3,6 +3,10 @@ This repo hosts client release assets, synchronized spell metadata, and the
 small native hook patch used by the desktop client installer/updater. It is
 not a complete OTClient source checkout and cannot be compiled by itself.
 
+The Tibia 15.25 login endpoint, game port, and Dokploy/Cloudflare TCP proxy
+requirements are documented in
+[`client-updates/TIBIA-15.25-CONNECTION.md`](client-updates/TIBIA-15.25-CONNECTION.md).
+
 The current spell metadata includes server IDs `298` and `305` for Forked
 Thorns and Forked Glacier, with their 6-second individual cooldowns. Druid
 Elemental Synthesis/Shared Conservation and the three Master Sorcerer stances
