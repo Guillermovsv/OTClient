@@ -1,0 +1,4 @@
+# Never commit Delyriumz server private RSA material.
+key.pem
+*.private.xml
+*server-rsa-private*
