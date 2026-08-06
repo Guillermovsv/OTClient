@@ -1,5 +1,28 @@
 # Delyriumz Tibia 15.25 server instructions (Linux)
 
+## Required native-client spell compatibility update
+
+The compiled native Tibia 15.25 client requires the Monk-safe Canary patch in:
+
+```text
+client-updates/tibia-15.25-monk-safe/canary-tibia-15.25-monk-safe.patch
+```
+
+This patch does not change spell effects or canonical server IDs. It keeps all
+Monk/Exalted Monk spell records intact, omits custom stance IDs `299` through
+`304` only from the native 15.25 spell-list packet, and presents Forked Glacier
+server ID `305` through its native record at ID `299`. OTClient and OTCv8
+continue receiving canonical IDs `299` through `305`.
+
+Apply and rebuild Canary using the dedicated instructions in:
+
+```text
+client-updates/tibia-15.25-monk-safe/README-SERVER.md
+```
+
+Do not deploy the superseded approach that mapped custom stances onto IDs
+`274`-`281`; those are real Monk spells.
+
 These instructions are for the official Tibia 15.25 client patched for
 Delyriumz. The client already reaches the character list. The remaining path
 is the raw game connection from the selected character to Canary.

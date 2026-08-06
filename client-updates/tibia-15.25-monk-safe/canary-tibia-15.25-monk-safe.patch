@@ -1,0 +1,49 @@
+diff --git a/src/server/network/protocol/protocolgame.cpp b/src/server/network/protocol/protocolgame.cpp
+index c5c54ea..caee1c7 100644
+--- a/src/server/network/protocol/protocolgame.cpp
++++ b/src/server/network/protocol/protocolgame.cpp
+@@ -5754,14 +5754,31 @@ void ProtocolGame::sendBasicData() {
+ 	}
+ 
+ 	// Filter only valid ids
++	const bool useNative1525SpellCompatibility = !oldProtocol
++		&& version == 1525
++		&& player->getOperatingSystem() == CLIENTOS_NEW_WINDOWS;
+ 	std::list<uint16_t> spellsList = g_spells().getSpellsByVocation(vocationId);
+ 	std::vector<std::shared_ptr<InstantSpell>> validSpells;
+ 	for (uint16_t sid : spellsList) {
+ 		auto spell = g_spells().getInstantSpellById(sid);
+ 		if (spell && spell->getSpellId() > 0) {
++			// IDs 299-304 do not exist as independent records in the native
++			// 15.25 spell database. Do not reuse Monk or another vocation's
++			// records; players can still cast them through text hotkeys.
++			if (useNative1525SpellCompatibility && spell->getSpellId() >= 299 && spell->getSpellId() <= 304) {
++				continue;
++			}
+ 			validSpells.emplace_back(spell);
+ 		}
+ 	}
++	const auto getClientSpellId = [useNative1525SpellCompatibility](uint16_t serverSpellId) -> uint16_t {
++		// Forked Glacier is canonical ID 305 on the server but remains native
++		// ID 299 in the unmodified Tibia 15.25 spell database.
++		if (useNative1525SpellCompatibility && serverSpellId == 305) {
++			return 299;
++		}
++		return serverSpellId;
++	};
+ 
+ 	// Send total size of spells
+ 	msg.add<uint16_t>(validSpells.size());
+@@ -5785,10 +5802,10 @@ void ProtocolGame::sendBasicData() {
+ 			if (static_cast<uint8_t>(grade) == 0) {
+ 				msg.add<uint16_t>(0);
+ 			} else {
+-				msg.add<uint16_t>(spell->getSpellId());
++				msg.add<uint16_t>(getClientSpellId(spell->getSpellId()));
+ 			}
+ 		} else {
+-			msg.add<uint16_t>(spell->getSpellId());
++			msg.add<uint16_t>(getClientSpellId(spell->getSpellId()));
+ 		}
+ 	}
+ 

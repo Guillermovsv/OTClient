@@ -1,5 +1,11 @@
 # Client update 2026.08.05 — stance and Forked spell library
 
+> **Client scope:** this document applies to the source-buildable OTClient /
+> OTCv8 release. Do not apply these library records by relabeling existing
+> spell IDs in the compiled native Tibia 15.25 client. That would overwrite
+> Monk spell metadata. Native-client deployment is documented in
+> [`UPDATE-2026.08.05-native-monk-safe.md`](UPDATE-2026.08.05-native-monk-safe.md).
+
 This update makes the following spells available in the action-bar hotkey
 assignment library:
 

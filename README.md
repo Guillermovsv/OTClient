@@ -113,6 +113,7 @@ Every client release must have one canonical, versioned instruction file under
 - [UPDATE-2026.07.30.md](client-updates/UPDATE-2026.07.30.md)
 - [UPDATE-2026.07.31-stance-visuals.md](client-updates/UPDATE-2026.07.31-stance-visuals.md)
 - [UPDATE-2026.08.05-spell-library.md](client-updates/UPDATE-2026.08.05-spell-library.md)
+- [UPDATE-2026.08.05-native-monk-safe.md](client-updates/UPDATE-2026.08.05-native-monk-safe.md)
 - [Master Sorcerer package](client-updates/master-sorcerer-2026-07-30/)
 
 Each package must include the runtime files, SHA256 checksums, a backup-aware
