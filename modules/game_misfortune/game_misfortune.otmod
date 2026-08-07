@@ -1,0 +1,8 @@
+Module
+  name: game_misfortune
+  description: Misfortune Lottery Ticket targeting window
+  author: OTC
+  sandboxed: true
+  scripts: [ game_misfortune ]
+  @onLoad: init()
+  @onUnload: terminate()

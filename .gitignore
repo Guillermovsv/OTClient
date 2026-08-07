@@ -1,4 +1,31 @@
-# Never commit Delyriumz server private RSA material.
+# ---- Never commit private RSA / secret material ----
 key.pem
 *.private.xml
 *server-rsa-private*
+*.private.pem
+
+# ---- Build artifacts / local outputs ----
+/build/
+/vcpkg_installed/
+OTClient.app/
+*.exe
+*.exe.*
+*.obj
+*.lib
+*.pdb
+
+# ---- Runtime-downloaded game assets (fetched by clientAssets at first launch) ----
+/data/things/
+/data/sounds/
+
+# ---- Logs, crashes, local state ----
+*.log
+packet.log
+.crashes/
+*.crash
+records/
+config.otml
+
+# ---- OS / editor ----
+.DS_Store
+*.sublime-workspace

@@ -1,0 +1,58 @@
+MainWindow
+  id: misfortuneTargetWindow
+  !text: tr('Lottery Ticket')
+  size: 300 150
+  @onEscape: modules.game_misfortune.cancelTargeting()
+
+  Label
+    id: description
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    margin: 8
+    height: 40
+    text-wrap: true
+    !text: tr('Enter the exact name of an online character to receive a random Misfortune condition for 2 hours.')
+
+  Label
+    id: recipientLabel
+    anchors.left: parent.left
+    anchors.verticalCenter: recipient.verticalCenter
+    margin-left: 8
+    !text: tr('Character:')
+
+  TextEdit
+    id: recipient
+    anchors.top: description.bottom
+    anchors.right: parent.right
+    margin-top: 8
+    margin-right: 8
+    width: 190
+    height: 20
+    max-length: 30
+
+  HorizontalSeparator
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: cancelButton.top
+    margin-left: 8
+    margin-right: 8
+    margin-bottom: 8
+
+  Button
+    id: cancelButton
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    margin-right: 8
+    margin-bottom: 8
+    width: 60
+    !text: tr('Cancel')
+
+  Button
+    id: confirmButton
+    anchors.right: cancelButton.left
+    anchors.bottom: parent.bottom
+    margin-right: 8
+    margin-bottom: 8
+    width: 60
+    !text: tr('Use')

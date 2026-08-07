@@ -1,0 +1,156 @@
+MagicalArchivesSpell < Label
+  font: verdana-11px-monochrome
+  background-color: alpha
+  text-offset: 40 3
+  focusable: true
+  height: 36
+  color: #C0C0C0
+  image-source: /images/game/spells/spell-icons-32x32
+  image-clip: 0 0 32 32
+  image-size: 32 32
+  image-offset: 2 2
+
+  $focus:
+    background-color: #ffffff22
+    color: #ffffff
+
+MagicalArchivesSpellLocked < MagicalArchivesSpell
+  color: #6E706F
+
+  $focus:
+    background-color: #ffffff22
+    color: #C8C8C8
+
+MagicalArchivesRow < UIWidget
+  height: 16
+  focusable: false
+
+  Label
+    id: key
+    anchors.left: parent.left
+    anchors.top: parent.top
+    anchors.bottom: parent.bottom
+    width: 110
+    text-align: topLeft
+    color: #909090
+
+  Label
+    id: value
+    anchors.left: key.right
+    anchors.right: parent.right
+    anchors.top: parent.top
+    anchors.bottom: parent.bottom
+    margin-left: 6
+    text-align: topLeft
+    color: #C0C0C0
+
+UIWidget
+  id: Cat5
+  anchors.fill: parent
+  visible: false
+  UIWidget
+    id: InformationBase
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.bottom: parent.bottom
+    margin-bottom: 8
+    margin-top: 10
+    width: 180
+    MiniPanel
+      id: selectSpell
+      anchors.fill: parent
+      image-border: 10
+      padding-right: 16
+      margin-bottom: 25
+      !text: tr('Select Spell')
+      layout:
+        type: verticalBox
+        spacing: 6
+
+      ComboBox
+        id: filterOption
+      TextListQuestLog
+        id: listPanel
+        height: 330
+      TextEditQuestLog
+        id: searchPanel
+
+  MiniPanel
+    id: spellAndRune
+    text: Spell / Rune Information
+    anchors.top: InformationBase.top
+    anchors.left: InformationBase.right
+    anchors.right: parent.right
+    anchors.bottom: InformationBase.bottom
+    margin-left: 10
+    margin-bottom: 25
+
+    Label
+      id: hint
+      anchors.centerIn: parent
+      !text: tr('Select a spell to view detailed information.')
+      color: #808080
+
+    UIWidget
+      id: details
+      anchors.fill: parent
+      visible: false
+
+      UIWidget
+        id: header
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 38
+
+        UIWidget
+          id: icon
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          size: 32 32
+          image-source: /images/game/spells/spell-icons-32x32
+          image-clip: 0 0 32 32
+
+        Label
+          id: name
+          anchors.left: icon.right
+          anchors.top: icon.top
+          margin-left: 8
+          margin-top: 1
+          text-auto-resize: true
+          color: #F6F6F6
+
+        Label
+          id: words
+          anchors.left: name.left
+          anchors.top: name.bottom
+          margin-top: 3
+          text-auto-resize: true
+          color: #8F8F8F
+
+        Label
+          id: status
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          text-auto-resize: true
+          color: #4EA24E
+
+      UIWidget
+        id: separator
+        anchors.top: header.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 4
+        height: 1
+        background-color: #00000055
+
+      Panel
+        id: rows
+        anchors.top: separator.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        margin-top: 8
+        layout:
+          type: verticalBox
+          spacing: 4

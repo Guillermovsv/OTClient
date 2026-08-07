@@ -1,0 +1,655 @@
+local bottomMenu
+local calendarWindow
+local activeScheduleEvent
+local upcomingScheduleEvent
+local eventSchedulerYears
+local calendarCurrentMonth
+local calendarPrevButton
+local calendarNextButton
+local calendarCurrentDate
+local showOffWindow
+
+local eventSchedulerTimestamp
+local eventSchedulerCalendar
+local eventSchedulerCalendarYearIndex
+local eventSchedulerCalendarMonth
+
+local boostedWindow
+local monsterOutfit
+local monsterImage
+local bossOutfit
+local bossImage
+
+local CREATURE_BONUS_TEXT = "Today's boosted creature: %s\n\n\tBoosted creatures yield more experience\n points, carry more loot than usual\n and respawn at a faster rate."
+local BOSS_BONUS_TEXT = "Today's boosted boss: %s\n\n\tBoosted boss contain more loot and\n count more kills for your bosstiary."
+
+local default_info = {
+    {
+        image = "images/randomhint",
+        Title = "Random Hint",
+        description = "Always carry a few extra health and mana potions. Running out at the wrong time is more expensive than overpreparing."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Random Hint",
+        description = "Set your hotkeys before every hunt. Fast reactions save more lives than better equipment."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Random Hint",
+        description = "Check your supplies before leaving town. A forgotten rope, shovel, or runes can ruin a hunt."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Random Hint",
+        description = "Upgrade your blessings after dying. They greatly reduce your experience and item loss."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Random Hint",
+        description = "Hunt where you can maintain a steady kill pace. Consistent experience beats frequent deaths."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Random Hint",
+        description = "Keep your backpack organized. Finding potions or runes instantly can save your character."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Random Hint",
+        description = "Watch your surroundings, not just your target. Extra monsters can quickly turn an easy fight into a dangerous one."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Random Hint",
+        description = "Deposit your loot regularly. Carrying unnecessary valuables increases your risk after a death."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Random Hint",
+        description = "Learn monster attack ranges and special abilities. Knowing when to step back is just as important as knowing when to attack."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Random Hint",
+        description = "Never ignore your cooldowns. Using your strongest spells as soon as they are available maximizes your damage."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Did You Know?",
+        description = "Master Chief became one of Tibia's most infamous legends after repeatedly luring Giant Spiders into Thais, where they slaughtered countless unsuspecting players. His deadly lures became one of the most famous stories from Tibia's early years."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Did You Know?",
+        description = "The mysterious 469 language has never been officially deciphered. Players have spent years trying to uncover its meaning, but many secrets remain unsolved."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Did You Know?",
+        description = "Bubble became the first player to reach both level 100 and level 200, making her one of the most legendary names in Tibia history."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Did You Know?",
+        description = "The famous Level 999 Door was considered impossible to open for over a decade. Kharsek finally reached level 999 and became the first player to enter it in 2016."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Did You Know?",
+        description = "Ferumbras is one of Tibia's most feared archmages. His disappearance and legacy are connected to several quests and mysteries across the world."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Did You Know?",
+        description = "Tibia's world contains over a thousand books filled with history, myths, and hidden clues. Many quests can only be fully understood by reading them."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Did You Know?",
+        description = "Arieswar accidentally became one of Tibia's biggest legends after a bug boosted his level from 76 to 130 with a single kill."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Did You Know?",
+        description = "The Sword of Fury has tempted players for decades. Despite countless theories, there is still no legitimate way to obtain it."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Did You Know?",
+        description = "Rookgaard has its own dedicated community. Some players spend years there without ever leaving the beginner island."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Did You Know?",
+        description = "The Black Knight is more than just a powerful enemy. His story is one of Tibia's oldest legends and inspired countless community theories."
+    },
+    {
+        image = "images/randomhint",
+        Title = "Did You Know?",
+        description = "Many of Tibia's greatest mysteries were intentionally designed without clear answers. CipSoft has confirmed that some secrets exist only to encourage exploration and speculation."
+    },
+}
+
+function init()
+    g_ui.importStyle('calendar')
+    bottomMenu = g_ui.displayUI('bottommenu')
+
+    calendarWindow = g_ui.createWidget('CalendarGrid', rootWidget)
+    calendarCurrentMonth = calendarWindow:recursiveGetChildById('calendarCurrentMonth')
+    calendarCurrentDate = calendarWindow:recursiveGetChildById('calendarCurrentDate')
+    calendarPrevButton = calendarWindow:recursiveGetChildById('calendarPrevButton')
+    calendarNextButton = calendarWindow:recursiveGetChildById('calendarNextButton')
+    calendarWindow:hide()
+
+    showOffWindow = bottomMenu:recursiveGetChildById('showOffWindow')
+    showOffWindow.title = showOffWindow:recursiveGetChildById('showOffWindowText')
+    activeScheduleEvent = bottomMenu:recursiveGetChildById('activeScheduleEvent')
+    upcomingScheduleEvent = bottomMenu:recursiveGetChildById('upcomingScheduleEvent')
+    upcomingScheduleEvent:recursiveGetChildById('fill'):setOn(false)
+    eventSchedulerCalendarYearIndex = 1
+    eventSchedulerCalendarMonth = tonumber(os.date("%m"))
+
+    boostedWindow = bottomMenu:recursiveGetChildById('boostedWindow')
+    monsterOutfit = boostedWindow:recursiveGetChildById('creature')
+    bossOutfit = boostedWindow:recursiveGetChildById('boss')
+    -- always resolve these: setBoostedCreatureAndBoss() needs them regardless
+    -- of whether the random hint below ends up showing or not.
+    monsterImage = boostedWindow:recursiveGetChildById('monsterImage')
+    bossImage = boostedWindow:recursiveGetChildById('bossImage')
+
+    -- showOffWindow is otherwise fed by a "showoff" Services.status webservice
+    -- call this server doesn't implement, so it would stay blank without this
+    -- fallback - just always show a random hint here instead.
+    if default_info then
+        local scrollable = showOffWindow:recursiveGetChildById('contentsPanel')
+        local widget = g_ui.createWidget('ShowOffWidget', scrollable)
+        local description = widget:recursiveGetChildById('description')
+        local image = widget:recursiveGetChildById('image')
+
+        math.randomseed(os.time())
+        local randomIndex = math.random(1, #default_info)
+        local randomItem = default_info[randomIndex]
+        showOffWindow.title:setText(tr(randomItem.Title))
+        image:setImageSource(randomItem.image)
+        description:setText(tr(randomItem.description))
+        monsterOutfit:setVisible(false)
+        bossOutfit:setVisible(false)
+        widget:resize(widget:getWidth(), description:getHeight())
+
+        monsterImage:setImageSource("images/icon-questionmark")
+        monsterImage:setVisible(true)
+        bossImage:setImageSource("images/icon-questionmark")
+        bossImage:setVisible(true)
+    end
+    if g_game.isOnline() then
+        hide()
+    end
+end
+
+function terminate()
+    bottomMenu:destroy()
+    calendarWindow:destroy()
+end
+
+function hide()
+    bottomMenu:hide()
+    bottomMenu:lower()
+
+    if not calendarWindow:isHidden() then
+        onClickCloseCalendar()
+    end
+end
+
+function show()
+    bottomMenu:show()
+    bottomMenu:raise()
+    bottomMenu:focus()
+end
+
+-- @ Store showoff
+function setShowOffData(data)
+    local widget = g_ui.createWidget('ShowOffWidget', showOffWindow)
+    local image = widget:recursiveGetChildById('image')
+
+    if data.image and data.image:sub(1, 4):lower() == "http" then
+        HTTP.downloadImage(data.image, function(path, err)
+            if err then
+                g_logger.warning("HTTP error: " .. err .. " - " .. data.image)
+                return
+            end
+            image:setImageSource(path)
+        end)
+    else
+        image:setImage(data.image)
+    end
+
+    local description = widget:recursiveGetChildById('description')
+
+    showOffWindow.title:setText(tr(data.title))
+    description:setText(tr(data.description))
+end
+
+-- @ Calendar/Events scheduler
+function onClickOnCalendar()
+    if eventSchedulerYears == nil or #eventSchedulerYears == 0 then
+        return
+    end
+
+    calendarWindow:show()
+    calendarWindow:raise()
+    calendarWindow:centerIn('parent')
+    calendarWindow:removeAnchor(AnchorHorizontalCenter)
+    calendarWindow:removeAnchor(AnchorVerticalCenter)
+    reloadEventsSchedulerCurrentPage()
+
+    g_keyboard.bindKeyPress('Escape', onClickCloseCalendar)
+end
+
+function onClickCloseCalendar()
+    calendarWindow:hide()
+    calendarWindow:lower()
+
+    g_keyboard.unbindKeyPress('Escape', onClickCloseCalendar)
+end
+
+function setEventsSchedulerTimestamp(time)
+    eventSchedulerTimestamp = time
+    calendarCurrentDate:setText(os.date("%Y-%m-%d, %H:%M CET", eventSchedulerTimestamp))
+end
+
+function getCalendarEventWidgetByDay(day, month, year, weekOffset, forceLine)
+    local weekIndex = getDayOfWeek(day, month, year)
+    local row = calendarWindow:recursiveGetChildById('row' .. weekIndex)
+    if not row then
+        return nil
+    end
+
+    local lineIndex = nil
+    if forceLine ~= nil then
+        lineIndex = forceLine
+    else
+        lineIndex = (math.floor(((weekOffset + day) - 1) / 7))
+    end
+    local line = row:recursiveGetChildById('line' .. lineIndex)
+    if not line then
+        return nil
+    end
+
+    return line
+end
+
+function reloadEventsSchedulerCurrentPage()
+    local firstDayOffset = getDayOfWeek(1)
+    if firstDayOffset == 0 then
+        firstDayOffset = 7
+    end
+    local weekOffset = firstDayOffset - 1
+
+    -- Days before the day 1 of this month
+    if weekOffset > 0 then
+        local previousYearIndex = eventSchedulerCalendarYearIndex
+        local previousMonth = eventSchedulerCalendarMonth
+        if previousMonth == 1 then
+            previousYearIndex = previousYearIndex - 1
+            previousMonth = 12
+        else
+            previousMonth = previousMonth - 1
+        end
+        if previousYearIndex >= 0 then
+            local previousDays = eventSchedulerYears[previousYearIndex][previousMonth]
+            local amountsLeft = weekOffset
+            local i = #previousDays
+            while (amountsLeft > 0) do
+                local widget = getCalendarEventWidgetByDay(i, previousMonth, tonumber(os.date("%Y", os.time())) +
+                    (previousYearIndex - 1), weekOffset, 0)
+                if widget then
+                    widget:clearEvents()
+                    widget.dayOfTheWeek = i
+                    widget:recursiveGetChildById('dayAndSeason'):setOn(true)
+                    widget:recursiveGetChildById('day'):setText(i)
+                    widget:recursiveGetChildById('day'):setWidth(string.len(
+                        widget:recursiveGetChildById('day'):getText()) * 10)
+                    widget:recursiveGetChildById('fill'):setOn(false)
+                    for _, event in ipairs(previousDays[i]) do
+                        widget:addScheduleEvent(event, false, nil)
+                    end
+                end
+                amountsLeft = amountsLeft - 1
+                i = i - 1
+            end
+        end
+    end
+
+    -- Days after the last day of this month
+    local days = eventSchedulerYears[eventSchedulerCalendarYearIndex][eventSchedulerCalendarMonth]
+    local lastDayOffset = getDayOfWeek(#days)
+    if lastDayOffset == 0 then
+        lastDayOffset = 7
+    end
+    local nextWeekOffset = 7 - lastDayOffset
+    local nextYearIndex = eventSchedulerCalendarYearIndex
+    local nextMonth = eventSchedulerCalendarMonth
+    if nextMonth == 12 then
+        nextYearIndex = nextYearIndex + 1
+        nextMonth = 1
+    else
+        nextMonth = nextMonth + 1
+    end
+    if nextYearIndex <= 2 then
+        local nextDays = eventSchedulerYears[nextYearIndex][nextMonth]
+        local amountsLeft = nextWeekOffset
+        local i = 1
+        local forceLine = 4
+        if firstDayOffset >= 5 then
+            forceLine = 5
+        end
+        if firstDayOffset <= 5 then
+            amountsLeft = amountsLeft + 7
+        end
+        while (amountsLeft > 0) do
+            if forceLine == 4 and amountsLeft == 7 then
+                forceLine = 5
+            end
+            local widget = getCalendarEventWidgetByDay(i, nextMonth,
+                tonumber(os.date("%Y", os.time())) + (nextYearIndex - 1), nextWeekOffset, forceLine)
+            if widget then
+                widget:clearEvents()
+                widget.dayOfTheWeek = i
+                widget:recursiveGetChildById('dayAndSeason'):setOn(true)
+                widget:recursiveGetChildById('day'):setText(i)
+                widget:recursiveGetChildById('day'):setWidth(
+                    string.len(widget:recursiveGetChildById('day'):getText()) * 10)
+                widget:recursiveGetChildById('fill'):setOn(false)
+                for _, event in ipairs(nextDays[i]) do
+                    widget:addScheduleEvent(event, false, nil)
+                end
+            end
+            amountsLeft = amountsLeft - 1
+            i = i + 1
+        end
+    end
+
+    for day, events in ipairs(days) do
+        local widget = getCalendarEventWidgetByDay(day, nil, nil, weekOffset, nil)
+        if widget then
+            widget:clearEvents()
+            widget.dayOfTheWeek = day
+            widget:recursiveGetChildById('dayAndSeason'):setOn(true)
+            widget:recursiveGetChildById('day'):setText(tr(day))
+            widget:recursiveGetChildById('day'):setWidth(string.len(widget:recursiveGetChildById('day'):getText()) * 10)
+            widget:recursiveGetChildById('fill'):setOn(true)
+            for _, event in ipairs(events) do
+                widget:addScheduleEvent(event, true, nil)
+            end
+        end
+    end
+
+    calendarCurrentMonth:setText(os.date("%B", os.time {
+        year = 2023,
+        month = eventSchedulerCalendarMonth,
+        day = 1
+    }) .. " " .. (tonumber(os.date("%Y", os.time())) + (eventSchedulerCalendarYearIndex - 1)))
+end
+
+function reloadEventsSchedulerCalender()
+    eventSchedulerYears = {}
+    table.insert(eventSchedulerYears, createCalendar(tonumber(os.date("%Y", os.time()))))
+    table.insert(eventSchedulerYears, createCalendar(tonumber(os.date("%Y", os.time())) + 1))
+
+    if eventSchedulerCalendar == nil or #eventSchedulerCalendar == 0 then
+        return
+    end
+
+    for _, info in ipairs(eventSchedulerCalendar) do
+        local days = getCalendarDays(info.startdate, info.enddate)
+        for index, day in ipairs(days) do
+            table.insert(day, {
+                active = (info.colorlight .. "ff"),
+                inactive = (info.colordark .. "ff"),
+                description = info.description,
+                priority = info.displaypriority,
+                season = info.isseasonal,
+                name = info.name,
+                special = info.specialevent,
+                firstDay = index == 1,
+                lastDay = index == #days
+            })
+        end
+    end
+
+    activeScheduleEvent:clearEvents()
+    local currentDay = getCalendarDays(os.time(), os.time())
+    if #currentDay > 0 then
+        for _, event in ipairs(currentDay[1]) do
+            activeScheduleEvent:addScheduleEvent(event, true, onClickOnCalendar)
+        end
+    end
+
+    upcomingScheduleEvent:clearEvents()
+    local nextDay = getCalendarDays(os.time() + 86400, os.time() + 86400)
+    if #nextDay > 0 then
+        for _, event in ipairs(nextDay[1]) do
+            upcomingScheduleEvent:addScheduleEvent(event, false, onClickOnCalendar)
+        end
+    end
+end
+
+function setEventsSchedulerCalender(calender)
+    eventSchedulerCalendar = calender
+    reloadEventsSchedulerCalender()
+end
+
+function createCalendar(year)
+    local calendar = {}
+
+    for month = 1, 12 do
+        calendar[month] = {}
+        local daysInMonth = 31
+        if month == 2 then
+            if (year % 4 == 0 and year % 100 ~= 0) or (year % 400 == 0) then
+                daysInMonth = 29
+            else
+                daysInMonth = 28
+            end
+        elseif month == 4 or month == 6 or month == 9 or month == 11 then
+            daysInMonth = 30
+        end
+
+        for day = 1, daysInMonth do
+            calendar[month][day] = {}
+        end
+    end
+
+    return calendar
+end
+
+function getCalendarDays(startTimestamp, endTimestamp)
+    local currentYear = tonumber(os.date("%Y", os.time()))
+    local startYear = tonumber(os.date("%Y", startTimestamp))
+    local endYear = tonumber(os.date("%Y", endTimestamp))
+    local daysInRange = {}
+
+    if startYear ~= currentYear and startYear ~= (currentYear + 1) then
+        return daysInRange
+    end
+
+    if endYear ~= currentYear and endYear ~= (currentYear + 1) then
+        return daysInRange
+    end
+
+    local startMonth = tonumber(os.date("%m", startTimestamp))
+    local startDay = tonumber(os.date("%d", startTimestamp))
+    local endMonth = tonumber(os.date("%m", endTimestamp))
+    local endDay = tonumber(os.date("%d", endTimestamp))
+
+    if startYear == currentYear then
+        for month = startMonth, endMonth do
+            local startLoop = 1
+            local endLoop = 31
+
+            if month == startMonth then
+                startLoop = startDay
+            end
+
+            if month == endMonth then
+                endLoop = endDay
+            end
+
+            if eventSchedulerYears[1][month] then
+                for day = startLoop, endLoop do
+                    if eventSchedulerYears[1][month][day] then
+                        table.insert(daysInRange, eventSchedulerYears[1][month][day])
+                    end
+                end
+            end
+        end
+    else
+        for month = startMonth, 12 do
+            local startLoop = 1
+            local endLoop = 31
+
+            if month == startMonth then
+                startLoop = startDay
+            end
+
+            if month == endMonth then
+                endLoop = endDay
+            end
+
+            if eventSchedulerYears[1][month] then
+                for day = startLoop, endLoop do
+                    if eventSchedulerYears[1][month][day] then
+                        table.insert(daysInRange, eventSchedulerYears[1][month][day])
+                    end
+                end
+            end
+        end
+        for month = 1, endMonth do
+            local startLoop = 1
+            local endLoop = 31
+
+            if month == startMonth then
+                startLoop = startDay
+            end
+
+            if month == endMonth then
+                endLoop = endDay
+            end
+
+            if eventSchedulerYears[2][month] then
+                for day = startLoop, endLoop do
+                    if eventSchedulerYears[2][month][day] then
+                        table.insert(daysInRange, eventSchedulerYears[2][month][day])
+                    end
+                end
+            end
+        end
+    end
+
+    return daysInRange
+end
+
+function getDayOfWeek(day, month, year)
+    if not year then
+        year = tonumber(os.date("%Y", os.time())) + (eventSchedulerCalendarYearIndex - 1)
+    end
+    if not month then
+        month = eventSchedulerCalendarMonth
+    end
+    local timestamp = os.time {
+        year = year,
+        month = month,
+        day = day
+    }
+    local weekday = tonumber(os.date("%w", timestamp))
+    -- 0: Sunday
+    -- 6: Saturday
+    return weekday
+end
+
+function onClickOnPreviousCalendar()
+    if eventSchedulerCalendarMonth == 1 then
+        if eventSchedulerCalendarYearIndex == 1 then
+            return
+        end
+        eventSchedulerCalendarMonth = 12
+        eventSchedulerCalendarYearIndex = eventSchedulerCalendarYearIndex - 1
+    else
+        eventSchedulerCalendarMonth = eventSchedulerCalendarMonth - 1
+    end
+
+    calendarNextButton:setEnabled(true)
+    if eventSchedulerCalendarYearIndex == 1 and eventSchedulerCalendarMonth == (tonumber(os.date("%m", os.time())) - 1) then
+        calendarPrevButton:setEnabled(false)
+    else
+        calendarPrevButton:setEnabled(true)
+    end
+
+    reloadEventsSchedulerCurrentPage()
+end
+
+function onClickOnNextCalendar()
+    if eventSchedulerCalendarMonth == 12 then
+        if eventSchedulerCalendarYearIndex == 2 then
+            return
+        end
+        eventSchedulerCalendarMonth = 1
+        eventSchedulerCalendarYearIndex = eventSchedulerCalendarYearIndex + 1
+    else
+        eventSchedulerCalendarMonth = eventSchedulerCalendarMonth + 1
+    end
+
+    calendarPrevButton:setEnabled(true)
+    if eventSchedulerCalendarYearIndex == 2 and eventSchedulerCalendarMonth == (tonumber(os.date("%m", os.time())) - 1) then
+        calendarNextButton:setEnabled(false)
+    else
+        calendarNextButton:setEnabled(true)
+    end
+
+    reloadEventsSchedulerCurrentPage()
+end
+
+-- (internal)
+-- set creature/boss to boosted slot
+local function applyToBoostedSlot(raceId, outfitWidget, imageWidget, fileName, tooltipText)
+    -- check if raceId was provided in the JSON response
+    if not raceId then
+        return
+    end
+
+    -- fetch race data
+    local raceData = g_things.getRaceData(raceId)
+
+    -- check if race id is present in the staticdata
+    if raceData.raceId == 0 then
+        local msg = string.format("[%s] Creature with race id %s was not found.", fileName,tostring(raceId))
+        g_logger.warning(msg)
+        return
+    end
+
+    -- apply to selected widget
+    outfitWidget:setOutfit(raceData.outfit)
+    outfitWidget:getCreature():setStaticWalking(1000)
+    outfitWidget:setVisible(true)
+    imageWidget:setVisible(false)
+    outfitWidget:setTooltip(tr(tooltipText, raceData.name or "Unknown"))
+end
+
+function setBoostedCreatureAndBoss(data)
+    if not modules.game_things.isLoaded() then
+        return
+    end
+
+    -- file name for error reporting
+    local fileName = debug.getinfo(1, "S").source -- current file name - bottommenu.lua
+
+    -- boosted creature
+    -- before bosstiary was introduced, the webservice was sending creature race in 'raceid' field
+    -- after bosstiary was added, it was changed to 'creatureraceid'
+    -- this 'or' statement ensures backwards compatibility
+    applyToBoostedSlot(data.creatureraceid or data.raceid, monsterOutfit, monsterImage, fileName, CREATURE_BONUS_TEXT)
+
+    -- boosted boss
+    applyToBoostedSlot(data.bossraceid, bossOutfit, bossImage, fileName, BOSS_BONUS_TEXT)
+end

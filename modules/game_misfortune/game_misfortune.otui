@@ -1,0 +1,42 @@
+MainWindow
+  id: misfortuneTargetWindow
+  !text: tr('Use Lottery Ticket')
+  size: 330 150
+  @onEscape: modules.game_misfortune.cancel()
+
+  Label
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    text-wrap: true
+    height: 45
+    !text: tr('Enter the name of the character you want to target with this Lottery Ticket.')
+
+  Label
+    anchors.top: prev.bottom
+    anchors.left: parent.left
+    margin-top: 8
+    !text: tr('Character name:')
+
+  TextEdit
+    id: targetName
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: prev.bottom
+    margin-top: 3
+    @onEnter: modules.game_misfortune.submit()
+
+  Button
+    anchors.bottom: parent.bottom
+    anchors.right: parent.right
+    width: 65
+    !text: tr('Cancel')
+    @onClick: modules.game_misfortune.cancel()
+
+  Button
+    anchors.bottom: parent.bottom
+    anchors.right: prev.left
+    margin-right: 5
+    width: 65
+    !text: tr('Use')
+    @onClick: modules.game_misfortune.submit()

@@ -1,0 +1,455 @@
+-- Standalone floating toggle button, independent of the native
+-- game_mainpanel "Manage Control Buttons" displayed/available list (that
+-- system turned out to be unreliable to guarantee visibility through), so
+-- this is always shown/hidden directly by DSS itself instead.
+DSSFloatingButton < UIButton
+  size: 20 20
+  image-source: /images/options/dss
+  image-clip: 0 0 20 20
+  image-border: 3
+  anchors.top: parent.top
+  anchors.right: parent.right
+  margin-top: 60
+  margin-right: 4
+
+  $hover !disabled:
+    image-clip: 0 0 20 20
+
+  $pressed:
+    image-clip: 20 0 20 20
+
+  $on:
+    image-clip: 20 0 20 20
+
+DSSButton < Button
+  size: 90 22
+
+DSSTabButton < Button
+  size: 140 24
+  $!checked:
+    color: #c0c0c0
+
+DSSSectionLabel < Label
+  font: verdana-11px-rounded
+  color: #d0d0d0
+  text-auto-resize: true
+
+DSSHint < Label
+  font: verdana-11px-rounded
+  color: #888888
+  text-auto-resize: true
+
+DSSSlotRow < Panel
+  height: 26
+  anchors.left: parent.left
+  anchors.right: parent.right
+
+  CheckBox
+    id: enabled
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+    !text: tr('On')
+    width: 40
+
+  TextEdit
+    id: words
+    anchors.left: prev.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    width: 150
+    text: exura
+
+  SpinBox
+    id: threshold
+    anchors.left: prev.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    width: 60
+    minimum: 1
+    maximum: 100
+    value: 80
+
+  Label
+    id: thresholdLabel
+    anchors.left: prev.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 4
+    text: %
+    width: 12
+
+DSSShooterRow < Panel
+  height: 26
+  anchors.left: parent.left
+  anchors.right: parent.right
+
+  CheckBox
+    id: enabled
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+    !text: tr('On')
+    width: 40
+
+  TextEdit
+    id: words
+    anchors.left: prev.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    width: 130
+    text: exori
+
+  SpinBox
+    id: manaMin
+    anchors.left: prev.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    width: 55
+    minimum: 0
+    maximum: 100
+    value: 20
+
+  Label
+    anchors.left: prev.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 3
+    text: % mp
+    width: 30
+
+  SpinBox
+    id: priority
+    anchors.left: prev.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    width: 50
+    minimum: 1
+    maximum: 5
+    value: 1
+
+  Label
+    anchors.left: prev.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 3
+    text: prio
+
+DSSMainWindow < MainWindow
+  !text: tr('Dely Spell Shooter')
+  size: 620 520
+  @onEscape: self:hide()
+
+  Panel
+    id: sidebar
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.bottom: parent.bottom
+    width: 140
+    margin-right: 8
+    image-source: /images/ui/3pixel_frame_borderimage
+    image-border: 4
+    padding: 8
+
+    Label
+      id: charName
+      anchors.top: parent.top
+      anchors.left: parent.left
+      anchors.right: parent.right
+      font: verdana-11px-rounded
+      text-align: center
+      text: Character
+      text-wrap: true
+
+    CheckBox
+      id: helperEnabled
+      anchors.top: prev.bottom
+      anchors.left: parent.left
+      margin-top: 12
+      !text: tr('Helper Enabled')
+
+    DSSTabButton
+      id: tabHealingButton
+      anchors.top: prev.bottom
+      anchors.left: parent.left
+      margin-top: 16
+      !text: tr('Healing')
+      checked: true
+
+    DSSTabButton
+      id: tabShooterButton
+      anchors.top: prev.bottom
+      anchors.left: parent.left
+      margin-top: 6
+      !text: tr('Spell Shooter')
+
+  Panel
+    id: mainArea
+    anchors.top: parent.top
+    anchors.left: sidebar.right
+    anchors.right: parent.right
+    anchors.bottom: closeButton.top
+    margin-bottom: 8
+
+    Panel
+      id: healingTab
+      anchors.fill: parent
+
+      DSSSectionLabel
+        id: spellHealLabel
+        anchors.top: parent.top
+        anchors.left: parent.left
+        text: Spell Healing (words / HP% trigger)
+
+      DSSSlotRow
+        id: spellHeal1
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 6
+
+      DSSSlotRow
+        id: spellHeal2
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 4
+
+      DSSSlotRow
+        id: spellHeal3
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 4
+
+      DSSSectionLabel
+        id: potionHealLabel
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        margin-top: 14
+        text: Potion Healing (item id / HP% trigger)
+
+      DSSSlotRow
+        id: potionHeal1
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 6
+
+      DSSSlotRow
+        id: potionHeal2
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 4
+
+      DSSSlotRow
+        id: potionHeal3
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 4
+
+      DSSSectionLabel
+        id: manaTrainingLabel
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        margin-top: 14
+        text: Mana Training
+
+      Panel
+        id: manaTrainingRow
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 6
+        height: 26
+
+        CheckBox
+          id: enabled
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          !text: tr('On')
+          width: 40
+
+        TextEdit
+          id: words
+          anchors.left: prev.right
+          anchors.verticalCenter: parent.verticalCenter
+          margin-left: 6
+          width: 150
+          text: exevo mas vis
+
+        SpinBox
+          id: threshold
+          anchors.left: prev.right
+          anchors.verticalCenter: parent.verticalCenter
+          margin-left: 6
+          width: 60
+          minimum: 0
+          maximum: 100
+          value: 90
+
+        Label
+          anchors.left: prev.right
+          anchors.verticalCenter: parent.verticalCenter
+          margin-left: 4
+          text: % mp
+
+      DSSSectionLabel
+        id: hasteLabel
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        margin-top: 14
+        text: Auto Haste
+
+      Panel
+        id: hasteRow
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 6
+        height: 26
+
+        CheckBox
+          id: enabled
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          !text: tr('On')
+          width: 40
+
+        TextEdit
+          id: words
+          anchors.left: prev.right
+          anchors.verticalCenter: parent.verticalCenter
+          margin-left: 6
+          width: 150
+          text: utani hur
+
+        CheckBox
+          id: castInPz
+          anchors.left: prev.right
+          anchors.verticalCenter: parent.verticalCenter
+          margin-left: 10
+          !text: tr('Cast in PZ')
+
+    Panel
+      id: shooterTab
+      anchors.fill: parent
+      visible: false
+
+      DSSSectionLabel
+        id: spellSlotsLabel
+        anchors.top: parent.top
+        anchors.left: parent.left
+        text: Attack Spells (words / mana% min / priority)
+
+      DSSShooterRow
+        id: spellSlot1
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 6
+
+      DSSShooterRow
+        id: spellSlot2
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 4
+
+      DSSShooterRow
+        id: spellSlot3
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 4
+
+      DSSShooterRow
+        id: spellSlot4
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 4
+
+      DSSShooterRow
+        id: spellSlot5
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 4
+
+      DSSSectionLabel
+        id: runeLabel
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        margin-top: 14
+        text: Rune (item id / mana% min / priority)
+
+      DSSShooterRow
+        id: runeSlot
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 6
+
+      DSSSectionLabel
+        id: stanceLabel
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        margin-top: 14
+        text: Stance
+
+      Panel
+        id: stanceRow
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 6
+        height: 26
+
+        DSSButton
+          id: stanceOffensive
+          anchors.left: parent.left
+          size: 90 22
+          !text: tr('Offensive')
+
+        DSSButton
+          id: stanceBalanced
+          anchors.left: prev.right
+          anchors.verticalCenter: prev.verticalCenter
+          margin-left: 6
+          size: 90 22
+          !text: tr('Balanced')
+
+        DSSButton
+          id: stanceDefensive
+          anchors.left: prev.right
+          anchors.verticalCenter: prev.verticalCenter
+          margin-left: 6
+          size: 90 22
+          !text: tr('Defensive')
+
+      DSSSectionLabel
+        id: optionsLabel
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        margin-top: 14
+        text: Options
+
+      CheckBox
+        id: autoTarget
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        margin-top: 6
+        !text: tr('Auto Target nearest creature')
+
+      CheckBox
+        id: shooterEnabled
+        anchors.top: prev.bottom
+        anchors.left: parent.left
+        margin-top: 4
+        !text: tr('Enable Shooter Helper')
+
+  Button
+    id: closeButton
+    !text: tr('Close')
+    anchors.bottom: parent.bottom
+    anchors.right: parent.right
+    width: 80
+    &onClick: DSS.hide()

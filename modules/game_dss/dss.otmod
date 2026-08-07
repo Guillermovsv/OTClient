@@ -1,0 +1,8 @@
+Module
+  name: game_dss
+  description: Dely Spell Shooter - automated healing and spell rotation helper
+  author: Dely
+  sandboxed: true
+  scripts: [ dss ]
+  @onLoad: DSS:init()
+  @onUnload: DSS:terminate()

@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "windows-release-vs2022",
+      "inherits": "windows-release",
+      "displayName": "Windows - Release (VS 2022 / v143)",
+      "description": "Same as windows-release but targets the VS 2022 v143 toolset instead of v145 (VS 2026).",
+      "cacheVariables": {
+        "VCPKG_PLATFORM_TOOLSET": "v143",
+        "OPTIONS_ENABLE_SCCACHE": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-release-vs2022",
+      "configurePreset": "windows-release-vs2022"
+    }
+  ]
+}

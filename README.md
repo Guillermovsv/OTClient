@@ -1,11 +1,42 @@
-# OTClient release assets
-This repo hosts client release assets, synchronized spell metadata, and the
-small native hook patch used by the desktop client installer/updater. It is
-not a complete OTClient source checkout and cannot be compiled by itself.
+# DelyriumzOT Client (OTClient - Redemption)
 
-The Tibia 15.25 login endpoint, game port, and Dokploy/Cloudflare TCP proxy
-requirements are documented in
+This repo now hosts the **full buildable DelyriumzOT client source** — the
+OTClient-Redemption tree wired to our server — alongside the release assets,
+synchronized spell metadata, and the native hook patch used by the desktop
+installer/updater.
+
+> Runtime game assets under `data/things/` (sprites) and `data/sounds/` are
+> **not** committed — they are fetched automatically on first launch by the
+> `clientAssets` downloader configured in `init.lua`. Everything required to
+> **compile** is in the repo.
+
+## Building the client
+
+See **[`WINDOWS_BUILD.md`](WINDOWS_BUILD.md)** for the full Windows recipe
+(VS 2022 + vcpkg + the `windows-release-vs2022` CMake preset). Short version,
+from *Developer PowerShell for VS 2022* in the repo root:
+
+```powershell
+cmake --preset windows-release-vs2022
+cmake --build --preset windows-release-vs2022
+# output: build\windows-release-vs2022\bin\otclient.exe
+```
+
+## Connecting to the server
+
+`init.lua` is preconfigured for our server via the HTTP login webservice:
+
+```lua
+["http://game.delyriumzot.com:8088/login"] = {
+    port = 7172, protocol = 1525, httpLogin = true, useAuthenticator = false
+}
+```
+
+The login endpoint, game port, and **Dokploy/Cloudflare raw-TCP proxy**
+requirements (port `7172` must be DNS-only / not HTTP-proxied) are documented in
 [`client-updates/TIBIA-15.25-CONNECTION.md`](client-updates/TIBIA-15.25-CONNECTION.md).
+Do **not** point the game connection at `7171` — that is Canary's legacy login
+port and this client uses HTTP login on `8088` instead.
 
 The current spell metadata includes server IDs `298` and `305` for Forked
 Thorns and Forked Glacier, with their 6-second individual cooldowns. Druid
