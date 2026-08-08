@@ -2,8 +2,16 @@ local iconTopMenu = nil
 
 local inventoryShrink = false
 
-local pvpModeRadioGroup = nil 
+local pvpModeRadioGroup = nil
 local monkMirrorItem = nil
+
+-- Posture the player explicitly picked (Stand/Follow). The server can push its
+-- own chase mode back at us (on login, on mode packets, or when a new attack
+-- target is set), which used to leave the client showing Stand while the
+-- character kept chasing the target. We keep the player's choice here and
+-- re-assert it, so attacking never turns Follow on by itself.
+local userChaseMode = nil
+local reassertingChaseMode = false
 
 local function getInventoryUi()
     if inventoryShrink then
@@ -96,13 +104,38 @@ local function walkEvent()
     end
 end
 
+-- Push the player's chosen posture back to the server whenever something else
+-- changed the chase mode behind their back.
+local function reassertChaseMode()
+    if userChaseMode == nil or reassertingChaseMode then
+        return
+    end
+    if not g_game.isOnline() then
+        return
+    end
+    if g_game.getChaseMode() == userChaseMode then
+        return
+    end
+
+    reassertingChaseMode = true
+    g_game.setChaseMode(userChaseMode)
+    reassertingChaseMode = false
+end
+
+local function attackEvent()
+    -- Setting a new attack target must not flip the posture to Follow.
+    reassertChaseMode()
+end
+
 local function combatEvent()
     if g_game.getChaseMode() == ChaseOpponent then
         selectPosture('follow', true)
     else
         selectPosture('stand', true)
     end
-    
+
+    reassertChaseMode()
+
     if g_game.getFightMode() == FightOffensive then
         selectCombat('attack', true)
     elseif g_game.getFightMode() == FightBalanced then
@@ -253,6 +286,7 @@ function onSetChaseMode(self, selectedChaseModeButton)
     else
         chaseMode = DontChase
     end
+    userChaseMode = chaseMode
     g_game.setChaseMode(chaseMode)
 end
 
@@ -290,6 +324,7 @@ function inventoryController:onGameStart()
         if not table.empty(lastCombatControls) then
             if lastCombatControls[char] then
                 g_game.setFightMode(lastCombatControls[char].fightMode)
+                userChaseMode = lastCombatControls[char].chaseMode
                 g_game.setChaseMode(lastCombatControls[char].chaseMode)
                 g_game.setSafeFight(lastCombatControls[char].safeFight)
                 if lastCombatControls[char].pvpMode then
@@ -298,6 +333,10 @@ function inventoryController:onGameStart()
             end
         end
     end
+    if userChaseMode == nil then
+        userChaseMode = g_game.getChaseMode()
+    end
+
     inventoryController:registerEvents(LocalPlayer, {
         onInventoryChange = inventoryEvent,
         onSoulChange = onSoulChange,
@@ -310,7 +349,8 @@ function inventoryController:onGameStart()
         onFightModeChange = combatEvent,
         onChaseModeChange = combatEvent,
         onSafeFightChange = combatEvent,
-        onPVPModeChange = combatEvent
+        onPVPModeChange = combatEvent,
+        onAttackingCreatureChange = attackEvent
     }):execute()
 
     inventoryShrink = g_settings.getBoolean('mainpanel_shrink_inventory')
@@ -406,12 +446,14 @@ function selectPosture(key, ignoreUpdate)
         ui.standPosture:setEnabled(false)
         ui.followPosture:setEnabled(true)
         if not ignoreUpdate then
+            userChaseMode = DontChase
             g_game.setChaseMode(DontChase)
         end
     elseif key == 'follow' then
         ui.standPosture:setEnabled(true)
         ui.followPosture:setEnabled(false)
         if not ignoreUpdate then
+            userChaseMode = ChaseOpponent
             g_game.setChaseMode(ChaseOpponent)
         end
     end
