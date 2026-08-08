@@ -103,8 +103,11 @@ function g_game.getClientProtocolVersion(client)
     return clients[client] or client
 end
 
+-- Default to the Delyriumz server key rather than OTSERV_RSA. Because this is
+-- neither CIPSOFT_RSA nor OTSERV_RSA, g_game.chooseRsa() returns early and
+-- preserves it when connecting to the game world.
 if not G.currentRsa then
-    g_game.setRsa(OTSERV_RSA)
+    g_game.setRsa(DELYRIUMZ_RSA or OTSERV_RSA)
 end
 
 function g_game.closeContainerByItemId(itemId, tier)

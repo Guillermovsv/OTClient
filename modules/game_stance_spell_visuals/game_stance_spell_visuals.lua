@@ -54,7 +54,7 @@ end
 function controllerStanceSpellVisuals:onInit()
     g_shaders.createFragmentShader(
         'Master Sorcerer Stance Palette',
-        'modules/game_shaders/shaders/fragment/stance_palette.frag'
+        '/game_shaders/shaders/fragment/stance_palette.frag'
     )
     ProtocolGame.registerExtendedOpcode(SPELL_VISUAL_OPCODE, onExtendedOpcode)
     connect(g_game, { onGameEnd = clear })
