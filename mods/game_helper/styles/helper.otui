@@ -1,0 +1,392 @@
+RTCSectionLabel < Label
+  font: verdana-11px-rounded
+  color: #c8a45c
+  text-auto-resize: true
+  margin-top: 4
+
+RTCFieldLabel < Label
+  font: verdana-11px-rounded
+  color: #aaaaaa
+  text-auto-resize: true
+
+RTCRow < UIWidget
+  height: 22
+  layout:
+    type: horizontalBox
+    spacing: 6
+
+RTCTabButton < Button
+  width: 92
+  height: 22
+
+MainWindow
+  id: helperWindow
+  size: 640 452
+  text: RTC Helper
+  visible: false
+  @onEscape: modules.game_helper.hide()
+
+  Panel
+    id: sidebar
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.bottom: bottomBar.top
+    width: 178
+    margin-bottom: 6
+    layout:
+      type: verticalBox
+      spacing: 4
+
+    Label
+      id: charName
+      font: verdana-11px-rounded
+      color: #ffffff
+      text: -
+      text-auto-resize: true
+
+    Label
+      id: presetLabel
+      font: verdana-11px-rounded
+      color: #aaaaaa
+      text: Preset: Default
+      text-auto-resize: true
+
+    Label
+      id: statusLabel
+      font: verdana-11px-rounded
+      color: #cc4444
+      text: Helper Status: Disabled
+      text-auto-resize: true
+
+    HorizontalSeparator
+      margin-top: 6
+
+    RTCSectionLabel
+      text: Auto Haste
+
+    RTCRow
+      TextEdit
+        id: hasteWords
+        width: 96
+        height: 20
+      CheckBox
+        id: autoHasteBox
+        text: On
+        width: 40
+        height: 18
+      CheckBox
+        id: hastePzBox
+        text: PZ
+        width: 32
+        height: 18
+
+    RTCSectionLabel
+      text: Other Tools
+
+    RTCRow
+      CheckBox
+        id: autoEatBox
+        text: Auto Eat
+        width: 78
+        height: 18
+      TextEdit
+        id: foodItem
+        width: 62
+        height: 20
+
+  RTCTabButton
+    id: healingTabBtn
+    anchors.top: parent.top
+    anchors.left: sidebar.right
+    margin-left: 8
+    text: Healing
+    @onClick: modules.game_helper.selectTab('healing')
+
+  RTCTabButton
+    id: casterTabBtn
+    anchors.top: parent.top
+    anchors.left: healingTabBtn.right
+    margin-left: 4
+    text: RTCaster
+    @onClick: modules.game_helper.selectTab('caster')
+
+  Panel
+    id: healingPanel
+    anchors.top: healingTabBtn.bottom
+    anchors.left: sidebar.right
+    anchors.right: parent.right
+    anchors.bottom: bottomBar.top
+    margin-left: 8
+    margin-top: 6
+    margin-bottom: 6
+    layout:
+      type: verticalBox
+      spacing: 3
+
+    RTCSectionLabel
+      text: Spell Healing  (cast when HP% <= value)
+
+    RTCRow
+      TextEdit
+        id: heal1Words
+        width: 150
+        height: 20
+      SpinBox
+        id: heal1Hp
+        width: 58
+        height: 20
+      CheckBox
+        id: heal1Box
+        text: On
+        width: 40
+        height: 18
+
+    RTCRow
+      TextEdit
+        id: heal2Words
+        width: 150
+        height: 20
+      SpinBox
+        id: heal2Hp
+        width: 58
+        height: 20
+      CheckBox
+        id: heal2Box
+        text: On
+        width: 40
+        height: 18
+
+    RTCRow
+      TextEdit
+        id: heal3Words
+        width: 150
+        height: 20
+      SpinBox
+        id: heal3Hp
+        width: 58
+        height: 20
+      CheckBox
+        id: heal3Box
+        text: On
+        width: 40
+        height: 18
+
+    RTCSectionLabel
+      text: Potion Healing  (item id + threshold %)
+
+    RTCRow
+      TextEdit
+        id: pot1Item
+        width: 74
+        height: 20
+      RTCFieldLabel
+        text: HP%
+        width: 32
+      SpinBox
+        id: pot1Hp
+        width: 58
+        height: 20
+      CheckBox
+        id: pot1Box
+        text: On
+        width: 40
+        height: 18
+
+    RTCRow
+      TextEdit
+        id: pot2Item
+        width: 74
+        height: 20
+      RTCFieldLabel
+        text: Mana%
+        width: 42
+      SpinBox
+        id: pot2Mana
+        width: 58
+        height: 20
+      CheckBox
+        id: pot2Box
+        text: On
+        width: 40
+        height: 18
+
+  Panel
+    id: casterPanel
+    anchors.top: healingTabBtn.bottom
+    anchors.left: sidebar.right
+    anchors.right: parent.right
+    anchors.bottom: bottomBar.top
+    margin-left: 8
+    margin-top: 6
+    margin-bottom: 6
+    visible: false
+    layout:
+      type: verticalBox
+      spacing: 3
+
+    RTCRow
+      RTCFieldLabel
+        text: Attack spell
+        width: 152
+      RTCFieldLabel
+        text: Mana%
+        width: 58
+      RTCFieldLabel
+        text: Mobs
+        width: 58
+      RTCFieldLabel
+        text: On
+        width: 40
+
+    RTCRow
+      TextEdit
+        id: atk1Words
+        width: 150
+        height: 20
+      SpinBox
+        id: atk1Mana
+        width: 58
+        height: 20
+      SpinBox
+        id: atk1Mobs
+        width: 58
+        height: 20
+      CheckBox
+        id: atk1Box
+        width: 40
+        height: 18
+
+    RTCRow
+      TextEdit
+        id: atk2Words
+        width: 150
+        height: 20
+      SpinBox
+        id: atk2Mana
+        width: 58
+        height: 20
+      SpinBox
+        id: atk2Mobs
+        width: 58
+        height: 20
+      CheckBox
+        id: atk2Box
+        width: 40
+        height: 18
+
+    RTCRow
+      TextEdit
+        id: atk3Words
+        width: 150
+        height: 20
+      SpinBox
+        id: atk3Mana
+        width: 58
+        height: 20
+      SpinBox
+        id: atk3Mobs
+        width: 58
+        height: 20
+      CheckBox
+        id: atk3Box
+        width: 40
+        height: 18
+
+    RTCRow
+      TextEdit
+        id: atk4Words
+        width: 150
+        height: 20
+      SpinBox
+        id: atk4Mana
+        width: 58
+        height: 20
+      SpinBox
+        id: atk4Mobs
+        width: 58
+        height: 20
+      CheckBox
+        id: atk4Box
+        width: 40
+        height: 18
+
+    RTCRow
+      TextEdit
+        id: atk5Words
+        width: 150
+        height: 20
+      SpinBox
+        id: atk5Mana
+        width: 58
+        height: 20
+      SpinBox
+        id: atk5Mobs
+        width: 58
+        height: 20
+      CheckBox
+        id: atk5Box
+        width: 40
+        height: 18
+
+    HorizontalSeparator
+      margin-top: 4
+
+    RTCRow
+      CheckBox
+        id: shooterBox
+        text: Enable Shooter Helper
+        width: 180
+        height: 18
+
+    RTCRow
+      CheckBox
+        id: autoTargetBox
+        text: Auto Target nearest monster
+        width: 220
+        height: 18
+
+    RTCRow
+      TextEdit
+        id: runeItem
+        width: 74
+        height: 20
+      RTCFieldLabel
+        text: Rune id (use on target)
+        width: 150
+      CheckBox
+        id: runeBox
+        text: On
+        width: 40
+        height: 18
+
+  Panel
+    id: bottomBar
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    height: 26
+
+    CheckBox
+      id: enableBox
+      text: Helper Enabled
+      anchors.left: parent.left
+      anchors.verticalCenter: parent.verticalCenter
+      width: 140
+      height: 18
+
+    Button
+      id: closeButton
+      text: Close
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      width: 64
+      @onClick: modules.game_helper.hide()
+
+    Button
+      id: saveButton
+      text: Save
+      anchors.right: closeButton.left
+      anchors.verticalCenter: parent.verticalCenter
+      margin-right: 6
+      width: 64
+      @onClick: modules.game_helper.saveFromUI()
