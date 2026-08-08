@@ -72,6 +72,52 @@ local function canChangeFloor(pos, deltaZ)
     return fromTile and fromTile:hasElevation(3) and toTile:isWalkable()
 end
 
+-- Unit deltas per direction, used to find the leading visible edge.
+local dirDeltas = {
+    [North]     = { 0, -1 },
+    [East]      = { 1,  0 },
+    [South]     = { 0,  1 },
+    [West]      = { -1, 0 },
+    [NorthEast] = { 1, -1 },
+    [SouthEast] = { 1,  1 },
+    [SouthWest] = { -1, 1 },
+    [NorthWest] = { -1, -1 },
+}
+
+--- Whether the tile at the visible viewport's leading edge (in `dir`, measured
+--- from `destPos`) is already streamed in.
+---
+--- Predictive pre-walk moves the camera ahead of the server-confirmed position.
+--- When fast movement pushes it far enough that the visible edge passes the edge
+--- of the loaded (streamed) map, those not-yet-received tiles render black ahead
+--- of the camera. We only pre-walk while that leading-edge tile is loaded, so the
+--- prediction can never outrun the map stream and expose black. If we can't
+--- determine the viewport, we fall back to the previous behaviour (allow).
+local function leadingEdgeLoaded(destPos, dir)
+    local delta = dirDeltas[dir]
+    if not delta then
+        return true
+    end
+
+    local getMapPanel = modules.game_interface and modules.game_interface.getMapPanel
+    local mapPanel = getMapPanel and getMapPanel()
+    if not mapPanel then
+        return true
+    end
+
+    local dim = mapPanel:getVisibleDimension()
+    if not dim or not dim.width or dim.width == 0 or dim.height == 0 then
+        return true
+    end
+
+    local edge = {
+        x = destPos.x + delta[1] * math.floor(dim.width / 2),
+        y = destPos.y + delta[2] * math.floor(dim.height / 2),
+        z = destPos.z
+    }
+    return g_map.getTile(edge) ~= nil
+end
+
 --- Makes the player walk in the given direction.
 local function walk(dir)
     local player = g_game.getLocalPlayer()
@@ -115,7 +161,9 @@ local function walk(dir)
             if not canChangeFloor(toPos, 1) and not canChangeFloor(toPos, -1) then
                 return false
             end
-        else
+        elseif leadingEdgeLoaded(toPos, dir) then
+            -- Only predict ahead while the map stream can keep up; otherwise let
+            -- the server-confirmed walk drive the camera so no black tiles show.
             player:preWalk(dir)
         end
     end

@@ -569,6 +569,37 @@ function expToAdvance(currentLevel, currentExp)
     return expForLevel(currentLevel + 1) - currentExp
 end
 
+-- Reliable level-progress percent (0-100) derived from experience.
+--
+-- The server's cached levelPercent byte (LocalPlayer:getLevelPercent()) is only
+-- recomputed inside Player::addExperience(); other stat updates call sendStats()
+-- without refreshing it, so the value can go stale and the level progress bar
+-- intermittently shows a wrong amount until the next kill. Our expForLevel
+-- formula is algebraically identical to the server's getExpForLevel, so we can
+-- compute the percent from the authoritative uint64 experience value instead of
+-- trusting the possibly-stale byte.
+function getReliableLevelPercent(player, fallbackPercent)
+    fallbackPercent = fallbackPercent or 0
+    if not player then
+        return fallbackPercent
+    end
+    local level = player:getLevel()
+    local currLevelExp = expForLevel(level)
+    local nextLevelExp = expForLevel(level + 1)
+    local span = nextLevelExp - currLevelExp
+    if span <= 0 then
+        return fallbackPercent -- max level (or bad data): keep whatever we had
+    end
+    local into = player:getExperience() - currLevelExp
+    if into < 0 then
+        into = 0
+    end
+    local percent = math.floor((into * 100) / span)
+    if percent < 0 then return 0 end
+    if percent > 100 then return 100 end
+    return percent
+end
+
 function resetSkillColor(id)
     local skill = skillsWindow:recursiveGetChildById(id)
     local widget = skill:getChildById('value')
@@ -1082,14 +1113,10 @@ local function getExperienceTooltip(localPlayer)
                tr('Next level in %d hours and %d minutes', hoursLeft, minutesLeft)
     end
     
-    local states = localPlayer:getStates()
-    local isInBattle = Player.isStateActive(states, PlayerStates.Swords) or Player.isStateActive(states, PlayerStates.RedSwords)
-    
-    if not isInBattle then
-        return tr('%s XP for next level', comma_value(expNeeded))
-    end
-    
-    return nil
+    -- Always show the remaining XP. Previously this returned nil while in
+    -- battle whenever expSpeed hadn't been measured yet, which made the level
+    -- amount blank out intermittently mid-hunt.
+    return tr('%s XP for next level', comma_value(expNeeded))
 end
 
 function onExperienceChange(localPlayer, value)
@@ -1105,7 +1132,9 @@ function onLevelChange(localPlayer, value, percent)
     if not localPlayer then
         return
     end
-    percent = percent or localPlayer:getLevelPercent()
+    -- Derive from experience so a stale server levelPercent byte can't make the
+    -- bar show a wrong amount; fall back to the sent/cached percent if needed.
+    percent = getReliableLevelPercent(localPlayer, percent or localPlayer:getLevelPercent())
     setSkillValue('level', comma_value(value))
     local text = tr('You have %s percent to go', 100 - percent)
     setSkillPercent('level', percent, text)

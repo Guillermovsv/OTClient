@@ -284,7 +284,7 @@ function XPAnalyser:updateExpensiveUI()
 
 	-- Update level percentage
 	if player then
-		contentsPanel.percent:setPercent(math.floor(player:getLevelPercent()))
+		contentsPanel.percent:setPercent(modules.game_skills.getReliableLevelPercent(player, player:getLevelPercent()))
 	else
 		contentsPanel.percent:setPercent(0)
 	end
@@ -422,7 +422,7 @@ function XPAnalyser:updateTooltip()
 	text = text .. "\nCurrent XP Per Hour: " .. formatMoney(XPAnalyser.xpHour, ",")
 	text = text .. "\nTarget XP Per Hour: " .. formatMoney(XPAnalyser.target, ",")
 	text = text .. "\n" .. formatMoney(expToAdvance(player:getLevel(), player:getExperience()), ",") .. " XP until next level."
-	text = text .. "\nYou have " .. 100 - player:getLevelPercent() .. " percent to go."
+	text = text .. "\nYou have " .. (100 - modules.game_skills.getReliableLevelPercent(player, player:getLevelPercent())) .. " percent to go."
 
 	XPAnalyser.window:setTooltip(text)
 end
