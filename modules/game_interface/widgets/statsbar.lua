@@ -141,7 +141,7 @@ local function reloadSkillsTab(skills, parent)
 
         if skillTuple.key == 'experience' then
             widget.level:setText(player:getLevel())
-            widget.bar:setValue(player:getLevelPercent(), 100)
+            widget.bar:setValue(modules.game_skills.getReliableLevelPercent(player, player:getLevelPercent()), 100)
         elseif skillTuple.key == 'magic' then
             widget.level:setText(player:getMagicLevel())
             widget.bar:setValue(player:getMagicLevelPercent(), 100)
@@ -415,7 +415,7 @@ function StatsBar.reloadCurrentStatsBarDeepInfo()
         if widget then
             if skillTuple.key == 'experience' then
                 widget.level:setText(player:getLevel())
-                widget.bar:setValue(player:getLevelPercent(), 100)
+                widget.bar:setValue(modules.game_skills.getReliableLevelPercent(player, player:getLevelPercent()), 100)
             elseif skillTuple.key == 'magic' then
                 widget.level:setText(player:getMagicLevel())
                 widget.bar:setValue(player:getMagicLevelPercent(), 100)

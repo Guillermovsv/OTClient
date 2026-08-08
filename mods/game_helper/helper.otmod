@@ -1,0 +1,8 @@
+Module
+  name: game_helper
+  description: RTC Helper - in-client healing & attack assistant (standalone, does not use the bot)
+  author: DelyriumzOT
+  sandboxed: true
+  scripts: [ helper ]
+  @onLoad: init()
+  @onUnload: terminate()

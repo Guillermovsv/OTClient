@@ -1,3 +1,6 @@
 *
 !/README.txt
 !.gitignore
+# Ship the RTC Helper (official mod), keep other user-local mods ignored.
+!/game_helper/
+!/game_helper/**
