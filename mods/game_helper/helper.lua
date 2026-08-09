@@ -26,6 +26,29 @@ local STANCE_NAMES = {
   ['Master of Thunder'] = true, ['Master of Decay'] = true,
 }
 
+-- Each slot only offers spells that make sense in it. Groups come from
+-- SpellGroups in gamelib/spells.lua: 1 Attack, 2 Healing, 3 Support,
+-- 8 UltimateStrikes, 9 GreatBeams, 10 BurstsOfNature.
+local ATTACK_GROUPS = { [1] = true, [8] = true, [9] = true, [10] = true }
+local HEAL_GROUPS = { [2] = true }
+local HASTE_NAMES = {
+  ['Haste'] = true, ['Strong Haste'] = true, ['Charge'] = true,
+  ['Swift Foot'] = true,
+}
+
+local function inGroups(info, set)
+  if type(info.group) ~= 'table' then return false end
+  for groupId in pairs(info.group) do
+    if set[groupId] then return true end
+  end
+  return false
+end
+
+local FILTER_HASTE  = function(name) return HASTE_NAMES[name] == true end
+local FILTER_HEAL   = function(_, info) return inGroups(info, HEAL_GROUPS) end
+local FILTER_ATTACK = function(_, info) return inGroups(info, ATTACK_GROUPS) end
+local FILTER_STANCE = function(name) return STANCE_NAMES[name] == true end
+
 local stats = {
   heals = 0, potions = 0, attacks = 0, runes = 0,
   hastes = 0, foods = 0, manaTrains = 0, exTrains = 0, golds = 0,
@@ -469,21 +492,65 @@ end
 
 -- Slots holding an item: drag one in, or left click to pick with the crosshair,
 -- right click to clear.
-local ITEM_SLOT_IDS = { 'pot1Slot', 'pot2Slot', 'pot3Slot', 'runeSlot', 'rune2Slot', 'exTrainSlot' }
+-- Item slots accept only what belongs in them. Runes are matched against
+-- SpellRunesData, which is keyed by the rune's item id.
+local function isRuneItem(itemId)
+  return SpellRunesData ~= nil and SpellRunesData[itemId] ~= nil
+end
+
+local function acceptRune(itemId)
+  if isRuneItem(itemId) then return true end
+  return false, tr('That is not a rune.')
+end
+
+local function acceptConsumable(itemId)
+  if isRuneItem(itemId) then
+    return false, tr('That is a rune, not a usable item for this slot.')
+  end
+  -- creating a probe item can throw on an unknown id, so never let it escape
+  local ok, probe = pcall(Item.create, itemId)
+  if ok and probe and probe.isUsable and not probe:isUsable() and not probe:isMultiUse() then
+    return false, tr('That item cannot be used.')
+  end
+  return true
+end
+
+local ITEM_SLOTS = {
+  { slot = 'pot1Slot',    accept = acceptConsumable },
+  { slot = 'pot2Slot',    accept = acceptConsumable },
+  { slot = 'pot3Slot',    accept = acceptConsumable },
+  { slot = 'runeSlot',    accept = acceptRune },
+  { slot = 'rune2Slot',   accept = acceptRune },
+  { slot = 'exTrainSlot', accept = acceptConsumable },
+}
+
+local ITEM_SLOT_IDS = {}
+for _, s in ipairs(ITEM_SLOTS) do table.insert(ITEM_SLOT_IDS, s.slot) end
 
 -- Slots holding a spell: left click opens the spell picker, right click clears.
 -- Each maps to the config field the chosen spell is written into.
 local SPELL_SLOTS = {
-  { slot = 'hasteSlot',     get = function() return config end,        words = 'hasteWords' },
-  { slot = 'heal1Slot',     get = function() return config.heals[1] end,   words = 'words' },
-  { slot = 'heal2Slot',     get = function() return config.heals[2] end,   words = 'words' },
-  { slot = 'heal3Slot',     get = function() return config.heals[3] end,   words = 'words' },
-  { slot = 'manaTrainSlot', get = function() return config.manaTrain end,  words = 'words' },
-  { slot = 'atk1Slot',      get = function() return config.attacks[1] end, words = 'words' },
-  { slot = 'atk2Slot',      get = function() return config.attacks[2] end, words = 'words' },
-  { slot = 'atk3Slot',      get = function() return config.attacks[3] end, words = 'words' },
-  { slot = 'atk4Slot',      get = function() return config.attacks[4] end, words = 'words' },
-  { slot = 'atk5Slot',      get = function() return config.attacks[5] end, words = 'words' },
+  { slot = 'hasteSlot',     get = function() return config end,           words = 'hasteWords',
+    filter = FILTER_HASTE,  wordsField = 'hasteWords' },
+  { slot = 'heal1Slot',     get = function() return config.heals[1] end,   words = 'words',
+    filter = FILTER_HEAL,   wordsField = 'heal1Words' },
+  { slot = 'heal2Slot',     get = function() return config.heals[2] end,   words = 'words',
+    filter = FILTER_HEAL,   wordsField = 'heal2Words' },
+  { slot = 'heal3Slot',     get = function() return config.heals[3] end,   words = 'words',
+    filter = FILTER_HEAL,   wordsField = 'heal3Words' },
+  -- training just needs something castable, so it is not narrowed
+  { slot = 'manaTrainSlot', get = function() return config.manaTrain end,  words = 'words',
+    wordsField = 'manaTrainWords' },
+  { slot = 'atk1Slot',      get = function() return config.attacks[1] end, words = 'words',
+    filter = FILTER_ATTACK, wordsField = 'atk1Words' },
+  { slot = 'atk2Slot',      get = function() return config.attacks[2] end, words = 'words',
+    filter = FILTER_ATTACK, wordsField = 'atk2Words' },
+  { slot = 'atk3Slot',      get = function() return config.attacks[3] end, words = 'words',
+    filter = FILTER_ATTACK, wordsField = 'atk3Words' },
+  { slot = 'atk4Slot',      get = function() return config.attacks[4] end, words = 'words',
+    filter = FILTER_ATTACK, wordsField = 'atk4Words' },
+  { slot = 'atk5Slot',      get = function() return config.attacks[5] end, words = 'words',
+    filter = FILTER_ATTACK, wordsField = 'atk5Words' },
 }
 
 local SLOT_IDS = ITEM_SLOT_IDS
@@ -587,6 +654,7 @@ local function applySpell(entry, info)
 end
 
 local function openSpellPicker(entry, filter)
+  filter = filter or entry.filter
   closeSpellPicker()
 
   spellPickerWindow = g_ui.createWidget('RTCSpellPickerWindow', g_ui.getRootWidget())
@@ -632,7 +700,21 @@ end
 -- container, or another slot) binds that item.
 local pickGrabber = nil
 
-local function startItemPick(id)
+-- Bind an item to a slot, refusing anything the slot does not take.
+local function bindItemToSlot(id, itemId, accept)
+  if accept then
+    local ok, why = accept(itemId)
+    if not ok then
+      displayErrorBox(tr('RTC Helper'), why or tr('That item does not belong here.'))
+      return false
+    end
+  end
+  setSlot(id, itemId)
+  saveConfig()
+  return true
+end
+
+local function startItemPick(id, accept)
   if g_ui.isMouseGrabbed() then return end
 
   if not pickGrabber then
@@ -653,9 +735,7 @@ local function startItemPick(id)
         if widget.getItemId then
           local picked = widget:getItemId()
           if picked and picked > 0 then
-            setSlot(id, picked)
-            saveConfig()
-            break
+            bindItemToSlot(id, picked, accept)
           end
           break
         end
@@ -672,15 +752,15 @@ end
 function wireSlots()
   if not helperWindow then return end
 
-  for _, id in ipairs(ITEM_SLOT_IDS) do
+  for _, spec in ipairs(ITEM_SLOTS) do
+    local id, accept = spec.slot, spec.accept
     local slot = w(id)
     if slot then
       slot:setDraggable(false)
       slot.onDrop = function(self, draggedWidget)
         local thing = draggedWidget and draggedWidget.currentDragThing
         if not thing or not thing.getId then return false end
-        setSlot(id, thing:getId())
-        saveConfig()
+        bindItemToSlot(id, thing:getId(), accept)
         return true
       end
       slot.onMouseRelease = function(self, _, mouseButton)
@@ -689,7 +769,7 @@ function wireSlots()
           saveConfig()
           return true
         elseif mouseButton == MouseLeftButton then
-          startItemPick(id)
+          startItemPick(id, accept)
           return true
         end
         return false
@@ -746,7 +826,7 @@ function wireSlots()
           saveConfig()
           return true
         elseif mouseButton == MouseLeftButton then
-          openSpellPicker(entry, function(name) return STANCE_NAMES[name] == true end)
+          openSpellPicker(entry, FILTER_STANCE)
           return true
         end
         return false
