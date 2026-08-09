@@ -77,6 +77,13 @@ local function defaultConfig()
       { enabled = false, item = 0, pct = 50, kind = 'hp' },
       { enabled = false, item = 0, pct = 40, kind = 'mana' },
     },
+    -- Heal Friend rows: cast exura sio on a named party member
+    friends = {
+      { enabled = false, name = '', pct = 70 },
+      { enabled = false, name = '', pct = 70 },
+      { enabled = false, name = '', pct = 70 },
+      { enabled = false, name = '', pct = 70 },
+    },
     manaTrain = { enabled = false, words = '', pct = 100, icon = 0 },
     exTrain = { enabled = false, item = 0 },
     attacks = {
@@ -119,6 +126,7 @@ function init()
   wireCombos()
   wireSlots()
   wirePotionBadges()
+  wireFriendRows()
   populateUI()
   refreshPresetCombo()
   selectTab('healing')
@@ -246,6 +254,10 @@ function show()
   -- onGameStart can fire before the outfit has arrived, which left the preview
   -- empty for the rest of the session; refresh it whenever the window opens.
   updatePreview(g_game.getLocalPlayer())
+  -- Vocation arrives in the player-data packet, which lands after onGameStart
+  -- and raises no event, so the grid built there saw vocation 0 and could not
+  -- filter. Rebuild on open, by which point the vocation is known.
+  buildStanceGrid()
 end
 
 function hide()
@@ -331,6 +343,7 @@ local function normalizeConfig(saved)
   base.heals     = normalizeRows(saved.heals, base.heals)
   base.attacks   = normalizeRows(saved.attacks, base.attacks)
   base.potions   = normalizeRows(saved.potions, base.potions)
+  base.friends   = normalizeRows(saved.friends, base.friends)
   base.manaTrain = normalizeGroup(saved.manaTrain, base.manaTrain)
 
   -- Carry the old two-potion schema (potHp / potMana) into the three rows.
@@ -478,7 +491,7 @@ end
 function wireSteppers()
   if not helperWindow then return end
   local ids = { 'heal1Hp', 'heal2Hp', 'heal3Hp', 'pot1Hp', 'pot2Hp', 'pot3Mana',
-                'manaTrainPct', 'atk1Mana', 'atk2Mana', 'atk3Mana',
+                'manaTrainPct', 'sio1Pct', 'sio2Pct', 'sio3Pct', 'sio4Pct', 'atk1Mana', 'atk2Mana', 'atk3Mana',
                 'atk4Mana', 'atk5Mana' }
   for _, id in ipairs(ids) do
     local box = w(id)
@@ -661,7 +674,14 @@ local CLIENT_VOCATION_TO_SPELL = {
 -- Spells the logged in character can actually use, by vocation.
 local function spellsForVocation()
   local player = g_game.getLocalPlayer()
-  local mine = player and CLIENT_VOCATION_TO_SPELL[player:getVocation()]
+  local vocation = player and player:getVocation() or 0
+  local mine = CLIENT_VOCATION_TO_SPELL[vocation]
+  if player and vocation > 0 and not mine then
+    -- an id the client's own table does not know: say so rather than silently
+    -- listing every vocation's spells
+    g_logger.info('[RTC Helper] unmapped vocation id ' .. tostring(vocation) ..
+      ' - spell filtering disabled')
+  end
 
   local out = {}
   for name, info in pairs(SpellInfo[SPELL_PROFILE] or {}) do
@@ -925,6 +945,7 @@ function buildStanceGrid()
           config.stance.icon  = tonumber(info.clientId) or 0
         end
         refreshStanceSelection()
+  refreshFriendRows()
         saveConfig()
       end
 
@@ -939,6 +960,7 @@ function buildStanceGrid()
   grid:setWidth(math.min(shown, perRow) * cell + math.max(0, math.min(shown, perRow) - 1) * gap)
 
   refreshStanceSelection()
+  refreshFriendRows()
 end
 
 function refreshStanceSelection()
@@ -980,6 +1002,77 @@ function wirePotionBadges()
   end
 end
 
+-- ---------------------------------------------------------------------------
+-- friend healing
+-- ---------------------------------------------------------------------------
+-- Party members standing in view, which is as far as the client can see: the
+-- protocol only reports health for creatures on screen.
+local selectedFriend = nil
+
+function refreshFriendList()
+  local list = w('friendList')
+  if not list then return end
+  list:destroyChildren()
+  selectedFriend = nil
+
+  local player = g_game.getLocalPlayer()
+  if not player then return end
+
+  local seen = {}
+  for _, creature in ipairs(g_map.getSpectators(player:getPosition(), false)) do
+    if creature:isPlayer() and creature ~= player and creature.isPartyMember
+        and creature:isPartyMember() then
+      local name = creature:getName()
+      if name and name ~= '' and not seen[name] then
+        seen[name] = true
+        local row = g_ui.createWidget('RTCFriendRow', list)
+        row:setText(name)
+        row.friendName = name
+        row.onClick = function() selectedFriend = name end
+      end
+    end
+  end
+
+  if not next(seen) then
+    local row = g_ui.createWidget('RTCFriendRow', list)
+    row:setText(tr('No party members in range'))
+    row:setFocusable(false)
+  end
+end
+
+function refreshFriendRows()
+  for i, f in ipairs(config.friends) do
+    setText('sio' .. i .. 'Name', (f.name ~= '' and f.name) or '-')
+    setChecked('sio' .. i .. 'Box', f.enabled)
+    setStepper('sio' .. i .. 'Pct', f.pct or 70)
+  end
+end
+
+function wireFriendRows()
+  for i = 1, #config.friends do
+    local setBtn = w('sio' .. i .. 'Set')
+    if setBtn then
+      setBtn.onClick = function()
+        if not selectedFriend then
+          displayInfoBox(tr('Friend Healing'),
+            tr('Pick a party member from the list on the left first.'))
+          return
+        end
+        config.friends[i].name = selectedFriend
+        refreshFriendRows()
+        saveConfig()
+      end
+    end
+    local box = w('sio' .. i .. 'Box')
+    if box then
+      box.onCheckChange = function(_, checked)
+        config.friends[i].enabled = checked
+        saveConfig()
+      end
+    end
+  end
+end
+
 function populateUI()
   if not helperWindow then return end
 
@@ -993,6 +1086,7 @@ function populateUI()
   setChecked('comboOrderBox', config.comboOrder)
   setChecked('hotkeyPriorityBox', config.hotkeyPriority)
   refreshStanceSelection()
+  refreshFriendRows()
 
   for i = 1, #config.heals do
     local h = config.heals[i]
@@ -1073,6 +1167,10 @@ function saveFromUI()
     config.attacks[i].mobs    = getCombo('atk' .. i .. 'Mobs', config.attacks[i].mobs)
     config.attacks[i].prio    = getCombo('atk' .. i .. 'Prio', config.attacks[i].prio)
     config.attacks[i].enabled = isChecked('atk' .. i .. 'Box')
+  end
+
+  for i, f in ipairs(config.friends) do
+    f.pct = getStepper('sio' .. i .. 'Pct', f.pct)
   end
 
   config.shooter    = isChecked('shooterBox')
@@ -1314,6 +1412,18 @@ local function monsters(player)
   return out
 end
 
+-- A named player currently on screen. Health is only known for creatures the
+-- server has told us about, so an off-screen friend cannot be healed.
+function findFriend(player, name)
+  if not player or not name or name == '' then return nil end
+  for _, creature in ipairs(g_map.getSpectators(player:getPosition(), false)) do
+    if creature:isPlayer() and creature:getName() == name and not creature:isDead() then
+      return creature
+    end
+  end
+  return nil
+end
+
 local function nearestMonster(player, list)
   local pos = player:getPosition()
   local best, bestDist
@@ -1513,6 +1623,21 @@ function loop()
       g_game.use(food)
       fire('eat', now)
       stats.foods = stats.foods + 1
+    end
+  end
+
+  -- 5b) heal friends: cast Heal Friend on a named party member who has dropped
+  -- below their threshold. The client only knows a creature's health while it
+  -- is on screen, so anyone out of view is simply skipped.
+  for i, f in ipairs(config.friends) do
+    if f.enabled and f.name ~= '' and ready('sio' .. i, now, 1000) then
+      local friend = findFriend(player, f.name)
+      if friend and friend:getHealthPercent() <= f.pct then
+        g_game.talk('exura sio "' .. f.name)
+        fire('sio' .. i, now)
+        stats.heals = stats.heals + 1
+        break
+      end
     end
   end
 

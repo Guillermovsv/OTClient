@@ -161,6 +161,20 @@ RTCSpellPickerRow < Label
     background-color: #ffffff22
     color: #ffffff
 
+// A name in the party-member list.
+RTCFriendRow < Label
+  font: verdana-11px-rounded
+  background-color: alpha
+  color: #dfdfdf
+  focusable: true
+  height: 16
+  text-align: left
+  text-offset: 4 1
+
+  $focus:
+    background-color: #ffffff22
+    color: #ffffff
+
 RTCSpellPickerWindow < MainWindow
   id: spellPicker
   !text: tr('Select Spell')
@@ -627,32 +641,226 @@ MainWindow
       id: friendTitle
       anchors.top: healSep.bottom
       anchors.left: parent.left
-      margin-top: 10
-      text: Friend Healing
-      enabled: false
+      margin-top: 8
+      text: Select a Friend
 
     RTCInfo
       id: friendInfo
       anchors.verticalCenter: friendTitle.verticalCenter
       anchors.left: friendTitle.right
       margin-left: 6
-      tooltip: Not implemented yet. Healing party members is planned for a later update.
+      tooltip: Party members in range. Pick one, then add it to a Sio row.
 
-    FlatPanel
-      id: friendPanel
+    TextList
+      id: friendList
+      vertical-scrollbar: friendScroll
       anchors.top: friendTitle.bottom
       anchors.left: parent.left
-      anchors.right: parent.right
       anchors.bottom: parent.bottom
+      margin-top: 4
+      margin-bottom: 2
+      width: 150
+      padding: 1
+      focusable: false
+
+    VerticalScrollBar
+      id: friendScroll
+      anchors.top: friendList.top
+      anchors.bottom: friendList.bottom
+      anchors.left: friendList.right
+      step: 14
+      pixels-scroll: true
+
+    RTCColumnLabel
+      id: sioTitle
+      anchors.top: healSep.bottom
+      anchors.left: parent.left
+      margin-left: 180
+      margin-top: 8
+      text: Sio Friend List
+
+    RTCSmallButton
+      id: sioRefresh
+      anchors.verticalCenter: sioTitle.verticalCenter
+      anchors.left: sioTitle.right
+      margin-left: 8
+      width: 60
+      text: Refresh
+      tooltip: Rescan for party members in range
+      @onClick: modules.game_helper.refreshFriendList()
+
+    UIWidget
+      id: sio1Row
+      anchors.top: sioTitle.bottom
       margin-top: 6
-      enabled: false
-      opacity: 0.45
+      anchors.left: parent.left
+      margin-left: 180
+      size: 300 20
+
+      RTCSmallButton
+        id: sio1Set
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        width: 20
+        text: +
+        tooltip: Put the friend selected on the left into this row
+
+      RTCCheck
+        id: sio1Box
+        anchors.left: sio1Set.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 6
+        width: 16
 
       RTCValueLabel
-        id: friendNote
-        anchors.centerIn: parent
-        text: Friend healing (Sio) is not available yet.
+        id: sio1Name
+        anchors.left: sio1Box.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 4
+        width: 120
+        text: -
 
+      RTCStepper
+        id: sio1Pct
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 186
+
+      RTCInfo
+        id: sio1Info
+        anchors.left: sio1Pct.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 6
+        tooltip: Cast Heal Friend on this player when their health drops to the set percent.
+    UIWidget
+      id: sio2Row
+      anchors.top: sio1Row.bottom
+      margin-top: 4
+      anchors.left: parent.left
+      margin-left: 180
+      size: 300 20
+
+      RTCSmallButton
+        id: sio2Set
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        width: 20
+        text: +
+        tooltip: Put the friend selected on the left into this row
+
+      RTCCheck
+        id: sio2Box
+        anchors.left: sio2Set.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 6
+        width: 16
+
+      RTCValueLabel
+        id: sio2Name
+        anchors.left: sio2Box.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 4
+        width: 120
+        text: -
+
+      RTCStepper
+        id: sio2Pct
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 186
+
+      RTCInfo
+        id: sio2Info
+        anchors.left: sio2Pct.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 6
+        tooltip: Cast Heal Friend on this player when their health drops to the set percent.
+    UIWidget
+      id: sio3Row
+      anchors.top: sio2Row.bottom
+      margin-top: 4
+      anchors.left: parent.left
+      margin-left: 180
+      size: 300 20
+
+      RTCSmallButton
+        id: sio3Set
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        width: 20
+        text: +
+        tooltip: Put the friend selected on the left into this row
+
+      RTCCheck
+        id: sio3Box
+        anchors.left: sio3Set.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 6
+        width: 16
+
+      RTCValueLabel
+        id: sio3Name
+        anchors.left: sio3Box.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 4
+        width: 120
+        text: -
+
+      RTCStepper
+        id: sio3Pct
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 186
+
+      RTCInfo
+        id: sio3Info
+        anchors.left: sio3Pct.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 6
+        tooltip: Cast Heal Friend on this player when their health drops to the set percent.
+    UIWidget
+      id: sio4Row
+      anchors.top: sio3Row.bottom
+      margin-top: 4
+      anchors.left: parent.left
+      margin-left: 180
+      size: 300 20
+
+      RTCSmallButton
+        id: sio4Set
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        width: 20
+        text: +
+        tooltip: Put the friend selected on the left into this row
+
+      RTCCheck
+        id: sio4Box
+        anchors.left: sio4Set.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 6
+        width: 16
+
+      RTCValueLabel
+        id: sio4Name
+        anchors.left: sio4Box.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 4
+        width: 120
+        text: -
+
+      RTCStepper
+        id: sio4Pct
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 186
+
+      RTCInfo
+        id: sio4Info
+        anchors.left: sio4Pct.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 6
+        tooltip: Cast Heal Friend on this player when their health drops to the set percent.
   // ---------------------------------------------------------- caster panel
   FlatPanel
     id: casterPanel
