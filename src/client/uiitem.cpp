@@ -140,8 +140,11 @@ void UIItem::setItem(const ItemPtr& item)
 {
     m_item = item;
     m_displayCount = 0;
-    if (item)
-        m_itemId = item->getClientId();
+    // Keep the cached id in step with the item in both directions. Only
+    // updating it for a real item left a cleared slot reporting whatever used
+    // to be in it, and drawSelf forces m_item back to m_itemId, so a stale id
+    // could redraw an item that is no longer equipped.
+    m_itemId = item ? item->getClientId() : 0;
 
     callLuaField("onItemChange");
 }

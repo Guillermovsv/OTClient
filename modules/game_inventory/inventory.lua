@@ -83,7 +83,7 @@ local function updateMonkMirrorItem(leftItem)
         shieldSlot.shield:setEnabled(false)
     else
         monkMirrorItem = nil
-        shieldItemWidget:setItem(nil)
+        shieldItemWidget:clearItem()
         shieldItemWidget:setOpacity(1.0)
         shieldItemWidget:setDraggable(true)
         shieldItemWidget:setEnabled(true)
@@ -171,7 +171,15 @@ local function inventoryEvent(player, slot, item, oldItem)
 
     local slotPanel, toggler = getSlotInfo(ui)
 
-    slotPanel.item:setItem(item)
+    -- UIItem::setItem() only refreshes the widget's item id when it is handed a
+    -- real item, so setItem(nil) drops the sprite but leaves the id of whatever
+    -- used to be there. The slot then still reports the old item to anything
+    -- that asks getItemId(), and can redraw it. clearItem() resets both.
+    if item then
+        slotPanel.item:setItem(item)
+    else
+        slotPanel.item:clearItem()
+    end
     toggler:setEnabled(not item)
     slotPanel.item:setWidth(34)
     slotPanel.item:setHeight(34)
