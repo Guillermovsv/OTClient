@@ -25,14 +25,19 @@ local function defaultConfig()
     autoHaste = false, hastePz = false, hasteWords = 'utani hur', hasteItem = 0,
     autoEat = false, foodItem = 3725,
     changeGold = false, autoReconnect = false,
-    comboOrder = false,
+    comboOrder = false, hotkeyPriority = false,
+    stance = { item1 = 0, item2 = 0 },
     heals = {
       { enabled = false, words = '', hp = 80, item = 0 },
       { enabled = false, words = '', hp = 60, item = 0 },
       { enabled = false, words = '', hp = 40, item = 0 },
     },
-    potHp   = { enabled = false, item = 0, hp = 50 },
-    potMana = { enabled = false, item = 0, mana = 40 },
+    -- rows 1-2 drink on health percent, row 3 on mana percent
+    potions = {
+      { enabled = false, item = 0, pct = 70, kind = 'hp' },
+      { enabled = false, item = 0, pct = 50, kind = 'hp' },
+      { enabled = false, item = 0, pct = 40, kind = 'mana' },
+    },
     manaTrain = { enabled = false, words = '', pct = 100, item = 0 },
     exTrain = { enabled = false, item = 0 },
     attacks = {
@@ -43,8 +48,9 @@ local function defaultConfig()
       { enabled = false, words = '', mana = 20, mobs = 1, prio = 5, item = 0 },
     },
     shooter = false, autoTarget = false,
-    rune = { enabled = false, item = 0, mobs = 1 },
+    rune = { enabled = false, item = 0, mobs = 1, prio = 1 },
     helperKey = '', targetKey = '',
+    schemaVersion = 2,
   }
 end
 
@@ -67,6 +73,7 @@ function init()
 
   loadConfig()
   wireSteppers()
+  wireCombos()
   wireSlots()
   populateUI()
   refreshPresetCombo()
@@ -86,6 +93,7 @@ function init()
   loopEvent = cycleEvent(loop, TICK_MS)
 
   if g_game.isOnline() then onGameStart() end
+
 end
 
 function terminate()
@@ -99,7 +107,8 @@ end
 function onGameStart()
   local player = g_game.getLocalPlayer()
   if player and helperWindow then
-    local name = helperWindow:recursiveGetChildById('charName')
+    -- the character name is the sidebar panel's own title bar
+    local name = helperWindow:recursiveGetChildById('sidebar')
     if name then name:setText(player:getName()) end
     local preview = helperWindow:recursiveGetChildById('charPreview')
     if preview and preview.setOutfit then
@@ -212,16 +221,48 @@ local function normalizeConfig(saved)
 
   for _, key in ipairs({ 'enabled', 'autoHaste', 'hastePz', 'hasteWords', 'hasteItem',
                          'autoEat', 'foodItem', 'changeGold', 'autoReconnect',
-                         'comboOrder', 'shooter', 'autoTarget',
+                         'comboOrder', 'hotkeyPriority', 'shooter', 'autoTarget',
                          'helperKey', 'targetKey' }) do
     if saved[key] ~= nil then base[key] = saved[key] end
   end
+  base.stance = normalizeGroup(saved.stance, base.stance)
 
   base.heals     = normalizeRows(saved.heals, base.heals)
   base.attacks   = normalizeRows(saved.attacks, base.attacks)
-  base.potHp     = normalizeGroup(saved.potHp, base.potHp)
-  base.potMana   = normalizeGroup(saved.potMana, base.potMana)
+  base.potions   = normalizeRows(saved.potions, base.potions)
   base.manaTrain = normalizeGroup(saved.manaTrain, base.manaTrain)
+
+  -- Carry the old two-potion schema (potHp / potMana) into the three rows.
+  if not saved.potions then
+    if type(saved.potHp) == 'table' then
+      base.potions[1].item    = saved.potHp.item or 0
+      base.potions[1].enabled = saved.potHp.enabled or false
+      if (saved.potHp.hp or 0) > 1 then base.potions[1].pct = saved.potHp.hp end
+    end
+    if type(saved.potMana) == 'table' then
+      base.potions[3].item    = saved.potMana.item or 0
+      base.potions[3].enabled = saved.potMana.enabled or false
+      if (saved.potMana.mana or 0) > 1 then base.potions[3].pct = saved.potMana.mana end
+    end
+  end
+
+  -- Settings written before the spin range was fixed had every percent clamped
+  -- to 1. Restore the defaults for those so the UI does not come back full of
+  -- 1s; anything saved after the fix carries schemaVersion and is left alone.
+  if (tonumber(saved.schemaVersion) or 1) < 2 then
+    local fresh = defaultConfig()
+    for i, row in ipairs(base.heals) do
+      if row.hp == 1 then row.hp = fresh.heals[i].hp end
+    end
+    for i, row in ipairs(base.potions) do
+      if row.pct == 1 then row.pct = fresh.potions[i].pct end
+    end
+    for i, row in ipairs(base.attacks) do
+      if row.mana == 1 then row.mana = fresh.attacks[i].mana end
+    end
+    if base.manaTrain.pct == 1 then base.manaTrain.pct = fresh.manaTrain.pct end
+  end
+  base.schemaVersion = 2
   base.exTrain   = normalizeGroup(saved.exTrain, base.exTrain)
   base.rune      = normalizeGroup(saved.rune, base.rune)
   return base
@@ -328,7 +369,7 @@ end
 -- Wire the < > buttons of every stepper to nudge its spin box.
 function wireSteppers()
   if not helperWindow then return end
-  local ids = { 'heal1Hp', 'heal2Hp', 'heal3Hp', 'pot1Hp', 'pot2Mana',
+  local ids = { 'heal1Hp', 'heal2Hp', 'heal3Hp', 'pot1Hp', 'pot2Hp', 'pot3Mana',
                 'manaTrainPct', 'atk1Mana', 'atk2Mana', 'atk3Mana',
                 'atk4Mana', 'atk5Mana' }
   for _, id in ipairs(ids) do
@@ -352,9 +393,46 @@ end
 -- click a slot to clear it. Mirrors how the action bar accepts drops.
 local SLOT_IDS = {
   'hasteSlot', 'heal1Slot', 'heal2Slot', 'heal3Slot',
-  'pot1Slot', 'pot2Slot', 'manaTrainSlot', 'exTrainSlot',
+  'pot1Slot', 'pot2Slot', 'pot3Slot', 'manaTrainSlot', 'exTrainSlot',
   'atk1Slot', 'atk2Slot', 'atk3Slot', 'atk4Slot', 'atk5Slot', 'runeSlot',
+  'stance1Slot', 'stance2Slot',
 }
+
+-- Creatures and Priority are dropdowns, shown as "1+" and "1st" like the
+-- reference. Options carry the plain number as their data.
+local ORDINALS = { '1st', '2nd', '3rd', '4th', '5th' }
+
+local function fillCombo(id, texts)
+  local combo = w(id)
+  if not combo or not combo.clearOptions then return end
+  combo:clearOptions()
+  for i, text in ipairs(texts) do combo:addOption(text, i) end
+end
+
+local function setCombo(id, value)
+  local combo = w(id)
+  if not combo or not combo.setCurrentOptionByData then return end
+  combo:setCurrentOptionByData(tonumber(value) or 1, true)
+end
+
+local function getCombo(id, fallback)
+  local combo = w(id)
+  if not combo or not combo.getCurrentOption then return fallback or 1 end
+  local opt = combo:getCurrentOption()
+  return (opt and tonumber(opt.data)) or fallback or 1
+end
+
+function wireCombos()
+  if not helperWindow then return end
+  local counts = {}
+  for i = 1, 8 do counts[i] = i .. '+' end
+  for i = 1, 5 do
+    fillCombo('atk' .. i .. 'Mobs', counts)
+    fillCombo('atk' .. i .. 'Prio', ORDINALS)
+  end
+  fillCombo('runeMobs', counts)
+  fillCombo('runePrio', ORDINALS)
+end
 
 function wireSlots()
   if not helperWindow then return end
@@ -392,6 +470,9 @@ function populateUI()
   setChecked('changeGoldBox', config.changeGold)
   setChecked('autoReconnectBox', config.autoReconnect)
   setChecked('comboOrderBox', config.comboOrder)
+  setChecked('hotkeyPriorityBox', config.hotkeyPriority)
+  setSlot('stance1Slot', config.stance.item1)
+  setSlot('stance2Slot', config.stance.item2)
 
   for i = 1, #config.heals do
     local h = config.heals[i]
@@ -401,12 +482,12 @@ function populateUI()
     setSlot('heal' .. i .. 'Slot', h.item)
   end
 
-  setSlot('pot1Slot', config.potHp.item)
-  setStepper('pot1Hp', config.potHp.hp or 0)
-  setChecked('pot1Box', config.potHp.enabled)
-  setSlot('pot2Slot', config.potMana.item)
-  setStepper('pot2Mana', config.potMana.mana or 0)
-  setChecked('pot2Box', config.potMana.enabled)
+  local potStepper = { 'pot1Hp', 'pot2Hp', 'pot3Mana' }
+  for i, p in ipairs(config.potions) do
+    setSlot('pot' .. i .. 'Slot', p.item)
+    setStepper(potStepper[i], p.pct or 0)
+    setChecked('pot' .. i .. 'Box', p.enabled)
+  end
 
   setChecked('manaTrainBox', config.manaTrain.enabled)
   setText('manaTrainWords', config.manaTrain.words or '')
@@ -420,8 +501,8 @@ function populateUI()
     local a = config.attacks[i]
     setText('atk' .. i .. 'Words', a.words or '')
     setStepper('atk' .. i .. 'Mana', a.mana or 0)
-    setSpin('atk' .. i .. 'Mobs', a.mobs or 1)
-    setSpin('atk' .. i .. 'Prio', a.prio or i)
+    setCombo('atk' .. i .. 'Mobs', a.mobs or 1)
+    setCombo('atk' .. i .. 'Prio', a.prio or i)
     setChecked('atk' .. i .. 'Box', a.enabled)
     setSlot('atk' .. i .. 'Slot', a.item)
   end
@@ -429,7 +510,8 @@ function populateUI()
   setChecked('shooterBox', config.shooter)
   setChecked('autoTargetBox', config.autoTarget)
   setSlot('runeSlot', config.rune.item)
-  setSpin('runeMobs', config.rune.mobs or 1)
+  setCombo('runeMobs', config.rune.mobs or 1)
+  setCombo('runePrio', config.rune.prio or 1)
   setChecked('runeBox', config.rune.enabled)
 
   refreshStatus()
@@ -452,6 +534,9 @@ function saveFromUI()
   config.changeGold = isChecked('changeGoldBox')
   config.autoReconnect = isChecked('autoReconnectBox')
   config.comboOrder = isChecked('comboOrderBox')
+  config.hotkeyPriority = isChecked('hotkeyPriorityBox')
+  config.stance.item1 = getSlot('stance1Slot', config.stance.item1)
+  config.stance.item2 = getSlot('stance2Slot', config.stance.item2)
 
   for i = 1, #config.heals do
     config.heals[i].words   = getText('heal' .. i .. 'Words')
@@ -460,12 +545,12 @@ function saveFromUI()
     config.heals[i].item    = getSlot('heal' .. i .. 'Slot', config.heals[i].item)
   end
 
-  config.potHp.item    = getSlot('pot1Slot', config.potHp.item)
-  config.potHp.hp      = getStepper('pot1Hp', config.potHp.hp)
-  config.potHp.enabled = isChecked('pot1Box')
-  config.potMana.item    = getSlot('pot2Slot', config.potMana.item)
-  config.potMana.mana    = getStepper('pot2Mana', config.potMana.mana)
-  config.potMana.enabled = isChecked('pot2Box')
+  local potStepperIds = { 'pot1Hp', 'pot2Hp', 'pot3Mana' }
+  for i, p in ipairs(config.potions) do
+    p.item    = getSlot('pot' .. i .. 'Slot', p.item)
+    p.pct     = getStepper(potStepperIds[i], p.pct)
+    p.enabled = isChecked('pot' .. i .. 'Box')
+  end
 
   config.manaTrain.enabled = isChecked('manaTrainBox')
   config.manaTrain.words   = getText('manaTrainWords')
@@ -478,8 +563,8 @@ function saveFromUI()
   for i = 1, #config.attacks do
     config.attacks[i].words   = getText('atk' .. i .. 'Words')
     config.attacks[i].mana    = getStepper('atk' .. i .. 'Mana', config.attacks[i].mana)
-    config.attacks[i].mobs    = getSpin('atk' .. i .. 'Mobs', config.attacks[i].mobs)
-    config.attacks[i].prio    = getSpin('atk' .. i .. 'Prio', config.attacks[i].prio)
+    config.attacks[i].mobs    = getCombo('atk' .. i .. 'Mobs', config.attacks[i].mobs)
+    config.attacks[i].prio    = getCombo('atk' .. i .. 'Prio', config.attacks[i].prio)
     config.attacks[i].enabled = isChecked('atk' .. i .. 'Box')
     config.attacks[i].item    = getSlot('atk' .. i .. 'Slot', config.attacks[i].item)
   end
@@ -487,7 +572,8 @@ function saveFromUI()
   config.shooter    = isChecked('shooterBox')
   config.autoTarget = isChecked('autoTargetBox')
   config.rune.item    = getSlot('runeSlot', config.rune.item)
-  config.rune.mobs    = getSpin('runeMobs', config.rune.mobs)
+  config.rune.mobs    = getCombo('runeMobs', config.rune.mobs)
+  config.rune.prio    = getCombo('runePrio', config.rune.prio)
   config.rune.enabled = isChecked('runeBox')
 
   saveConfig()
@@ -824,20 +910,21 @@ function loop()
     end
   end
 
-  -- 2) potion healing (HP)
-  if not healed and config.potHp.enabled and config.potHp.item > 0
-      and hp <= config.potHp.hp and ready('potHp', now, 1000) then
-    g_game.useInventoryItem(config.potHp.item)
-    fire('potHp', now)
-    stats.potions = stats.potions + 1
-  end
-
-  -- 3) mana potion
-  if config.potMana.enabled and config.potMana.item > 0
-      and manaPercent(player) <= config.potMana.mana and ready('potMana', now, 1000) then
-    g_game.useInventoryItem(config.potMana.item)
-    fire('potMana', now)
-    stats.potions = stats.potions + 1
+  -- 2) potions: health rows first (only if a heal spell did not already fire),
+  -- then the mana row, each on its own cooldown.
+  local mana = manaPercent(player)
+  local drankHealth = false
+  for i, p in ipairs(config.potions) do
+    local isMana = p.kind == 'mana'
+    local level = isMana and mana or hp
+    local blocked = isMana and false or (healed or drankHealth)
+    if p.enabled and p.item > 0 and not blocked and level <= p.pct
+        and ready('pot' .. i, now, 1000) then
+      g_game.useInventoryItem(p.item)
+      fire('pot' .. i, now)
+      stats.potions = stats.potions + 1
+      if not isMana then drankHealth = true end
+    end
   end
 
   -- 4) auto haste
