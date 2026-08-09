@@ -219,6 +219,14 @@ function onGameStart()
     if name then name:setText(player:getName()) end
     updatePreview(player)
   end
+  -- The character name is only known once in game, and the settings are keyed
+  -- by it, so the profile is loaded here rather than at module init. Without
+  -- this the window would still be showing whoever logged in last.
+  loadConfig()
+  populateUI()
+  refreshPresetCombo()
+  applyHotkeys()
+
   -- vocation is only known once in game, so the stance list is built here
   buildStanceGrid()
   refreshStatus()
@@ -412,30 +420,68 @@ local function normalizeConfig(saved)
   return base
 end
 
+-- Settings are per character. A druid must not inherit a sorcerer's spells, so
+-- everything is stored under the character's own name and nothing is shared
+-- between them; Export and Import are the only way to move a setup across.
+local function characterKey()
+  local name = g_game.getCharacterName()
+  if name == nil or name == '' then return '_offline' end
+  return name
+end
+
+local function characterNode(key)
+  local root = g_settings.getNode(key)
+  if type(root) ~= 'table' then root = {} end
+  if type(root.characters) ~= 'table' then root.characters = {} end
+  return root
+end
+
 function loadConfig()
-  config = normalizeConfig(g_settings.getNode(SETTINGS_KEY))
-  local presets = g_settings.getNode(PRESETS_KEY)
-  if type(presets) == 'table' and type(presets.current) == 'string' then
-    currentPreset = presets.current
+  local who = characterKey()
+
+  local root = characterNode(SETTINGS_KEY)
+  local mine = root.characters[who]
+  if mine == nil and who ~= '_offline' and root.enabled ~= nil then
+    -- settings saved before profiles were split: adopt them for this character
+    -- once, then leave the shared copy alone
+    mine = root
+  end
+  config = normalizeConfig(mine)
+
+  local presets = characterNode(PRESETS_KEY)
+  local minePresets = presets.characters[who]
+  if type(minePresets) == 'table' and type(minePresets.current) == 'string' then
+    currentPreset = minePresets.current
+  else
+    currentPreset = 'Default'
   end
 end
 
 function saveConfig()
-  g_settings.setNode(SETTINGS_KEY, config)
-  local presets = g_settings.getNode(PRESETS_KEY)
-  if type(presets) ~= 'table' then presets = { list = {} } end
-  if type(presets.list) ~= 'table' then presets.list = {} end
-  presets.current = currentPreset
-  presets.list[currentPreset] = config
+  local who = characterKey()
+
+  local root = characterNode(SETTINGS_KEY)
+  root.characters[who] = config
+  g_settings.setNode(SETTINGS_KEY, root)
+
+  local presets = characterNode(PRESETS_KEY)
+  local mine = presets.characters[who]
+  if type(mine) ~= 'table' then mine = { list = {} } end
+  if type(mine.list) ~= 'table' then mine.list = {} end
+  mine.current = currentPreset
+  mine.list[currentPreset] = config
+  presets.characters[who] = mine
   g_settings.setNode(PRESETS_KEY, presets)
+
   g_settings.save()
 end
 
 local function presetNames()
-  local presets = g_settings.getNode(PRESETS_KEY)
+  local presets = characterNode(PRESETS_KEY)
+  local mine = presets.characters[characterKey()]
   local names = {}
-  if type(presets) == 'table' and type(presets.list) == 'table' then
-    for name in pairs(presets.list) do table.insert(names, name) end
+  if type(mine) == 'table' and type(mine.list) == 'table' then
+    for name in pairs(mine.list) do table.insert(names, name) end
   end
   if #names == 0 then table.insert(names, 'Default') end
   table.sort(names)
@@ -680,9 +726,12 @@ local function setSpellSlot(id, clientId, words)
   words = words or ''
   local hasSpell = words ~= ''
 
+  -- clientId 0 is a real atlas slot -- it holds the Ultimate Healing icon --
+  -- so it must not be read as "no icon". Whether a slot is filled is decided
+  -- by the words alone, and the icon is drawn for any assigned spell.
   local icon = slot:getChildById('icon')
   if icon then
-    if hasSpell and clientId > 0 then
+    if hasSpell then
       icon:setImageClip(Spells.getImageClip(clientId, SPELL_PROFILE))
       icon:setVisible(true)
     else
@@ -692,18 +741,8 @@ local function setSpellSlot(id, clientId, words)
 
   local ph = slot:getChildById('placeholder')
   if ph then
-    if hasSpell and clientId <= 0 then
-      -- Assigned but iconless. The slot is only 34px wide, so spell out the
-      -- initials rather than clipping the words to something unreadable; the
-      -- tooltip still carries the full words.
-      local initials = ''
-      for word in words:gmatch('%a+') do initials = initials .. word:sub(1, 1):upper() end
-      ph:setText(initials ~= '' and initials or '*')
-      ph:setVisible(true)
-    else
-      ph:setText('. . . .')
-      ph:setVisible(not hasSpell)
-    end
+    ph:setText('. . . .')
+    ph:setVisible(not hasSpell)
   end
 
   slot:setTooltip(hasSpell and words or '')
@@ -797,13 +836,7 @@ local function openSpellPicker(entry, filter)
       added = added + 1
       local row = g_ui.createWidget('RTCSpellPickerRow', list)
       row:setText(spell.name .. "\n'" .. (spell.info.words or '') .. "'")
-      local clientId = tonumber(spell.info.clientId) or 0
-      if clientId > 0 then
-        row:setImageClip(Spells.getImageClip(clientId, SPELL_PROFILE))
-      else
-        -- clientId 0 means no icon; drawing it would show slot 0's art
-        row:setImageSource('')
-      end
+      row:setImageClip(Spells.getImageClip(tonumber(spell.info.clientId) or 0, SPELL_PROFILE))
       row.spellInfo = spell.info
       -- single click focuses the row, double click takes it, and Select
       -- applies whatever is focused
@@ -1028,6 +1061,9 @@ function buildStanceGrid()
   refreshStanceSelection()
 end
 
+-- Set to true to log what the stance grid holds and which buttons get lit.
+local DEBUG_STANCE_SELECTION = true
+
 function refreshStanceSelection()
   -- Clear every button first, then light only the one stance each group holds.
   -- Driving it from the config in a single pass means two buttons in the same
@@ -1039,6 +1075,18 @@ function refreshStanceSelection()
     local slot = config.stance[group]
     local btn = slot and slot.name ~= '' and stanceButtons[slot.name]
     if btn and btn.setOn then btn:setOn(true) end
+  end
+
+  if DEBUG_STANCE_SELECTION then
+    local lit = {}
+    for name, btn in pairs(stanceButtons) do
+      if btn.isOn and btn:isOn() then table.insert(lit, name) end
+    end
+    table.sort(lit)
+    g_logger.info(('[STANCE-SEL] main=%q aura=%q lit={%s}'):format(
+      config.stance.main and config.stance.main.name or '',
+      config.stance.aura and config.stance.aura.name or '',
+      table.concat(lit, ', ')))
   end
 end
 
@@ -1283,9 +1331,10 @@ function refreshPresetCombo()
 end
 
 function loadPreset(name)
-  local presets = g_settings.getNode(PRESETS_KEY)
-  if type(presets) == 'table' and type(presets.list) == 'table' and presets.list[name] then
-    config = normalizeConfig(presets.list[name])
+  local presets = characterNode(PRESETS_KEY)
+  local mine = presets.characters[characterKey()]
+  if type(mine) == 'table' and type(mine.list) == 'table' and mine.list[name] then
+    config = normalizeConfig(mine.list[name])
   else
     config = defaultConfig()
   end
@@ -1311,9 +1360,10 @@ function renamePreset()
   local old = currentPreset
   displayTextInputBox(tr('Rename Preset'), tr('New name:'), function(name)
     if not name or name == '' or name == old then return end
-    local presets = g_settings.getNode(PRESETS_KEY)
-    if type(presets) == 'table' and type(presets.list) == 'table' then
-      presets.list[old] = nil
+    local presets = characterNode(PRESETS_KEY)
+    local mine = presets.characters[characterKey()]
+    if type(mine) == 'table' and type(mine.list) == 'table' then
+      mine.list[old] = nil
       g_settings.setNode(PRESETS_KEY, presets)
     end
     currentPreset = name
@@ -1328,10 +1378,11 @@ function deletePreset()
     displayInfoBox(tr('RTC Helper'), tr('The Default preset cannot be deleted.'))
     return
   end
-  local presets = g_settings.getNode(PRESETS_KEY)
-  if type(presets) == 'table' and type(presets.list) == 'table' then
-    presets.list[currentPreset] = nil
-    presets.current = 'Default'
+  local presets = characterNode(PRESETS_KEY)
+  local mine = presets.characters[characterKey()]
+  if type(mine) == 'table' and type(mine.list) == 'table' then
+    mine.list[currentPreset] = nil
+    mine.current = 'Default'
     g_settings.setNode(PRESETS_KEY, presets)
     g_settings.save()
   end
