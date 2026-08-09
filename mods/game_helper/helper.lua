@@ -670,22 +670,39 @@ function wireCombos()
 end
 
 -- Spell icon slots -----------------------------------------------------------
+-- A slot counts as filled when it has words, not when it has an icon: several
+-- spells carry clientId 0 (Ultimate Healing among them), and keying off the
+-- icon made those look unassigned even though they had been picked.
 local function setSpellSlot(id, clientId, words)
   local slot = w(id)
   if not slot then return end
   clientId = tonumber(clientId) or 0
+  words = words or ''
+  local hasSpell = words ~= ''
+
   local icon = slot:getChildById('icon')
-  local ph = slot:getChildById('placeholder')
   if icon then
-    if clientId > 0 then
+    if hasSpell and clientId > 0 then
       icon:setImageClip(Spells.getImageClip(clientId, SPELL_PROFILE))
       icon:setVisible(true)
     else
       icon:setVisible(false)
     end
   end
-  if ph then ph:setVisible(clientId <= 0) end
-  slot:setTooltip(words and words ~= '' and words or '')
+
+  local ph = slot:getChildById('placeholder')
+  if ph then
+    if hasSpell and clientId <= 0 then
+      -- assigned but iconless: show the words so the slot does not read empty
+      ph:setText(words:sub(1, 8))
+      ph:setVisible(true)
+    else
+      ph:setText('. . . .')
+      ph:setVisible(not hasSpell)
+    end
+  end
+
+  slot:setTooltip(hasSpell and words or '')
 end
 
 -- The client and the spell library number vocations differently, and the two
@@ -776,9 +793,12 @@ local function openSpellPicker(entry, filter)
       added = added + 1
       local row = g_ui.createWidget('RTCSpellPickerRow', list)
       row:setText(spell.name .. "\n'" .. (spell.info.words or '') .. "'")
-      local clientId = tonumber(spell.info.clientId)
-      if clientId then
+      local clientId = tonumber(spell.info.clientId) or 0
+      if clientId > 0 then
         row:setImageClip(Spells.getImageClip(clientId, SPELL_PROFILE))
+      else
+        -- clientId 0 means no icon; drawing it would show slot 0's art
+        row:setImageSource('')
       end
       row.spellInfo = spell.info
       -- single click focuses the row, double click takes it, and Select
@@ -1005,9 +1025,16 @@ function buildStanceGrid()
 end
 
 function refreshStanceSelection()
-  for name, btn in pairs(stanceButtons) do
-    local slot = config.stance[STANCE_GROUP[name] or 'main']
-    if btn.setOn then btn:setOn(slot ~= nil and slot.name == name) end
+  -- Clear every button first, then light only the one stance each group holds.
+  -- Driving it from the config in a single pass means two buttons in the same
+  -- group can never both end up lit.
+  for _, btn in pairs(stanceButtons) do
+    if btn.setOn then btn:setOn(false) end
+  end
+  for _, group in ipairs({ 'main', 'aura' }) do
+    local slot = config.stance[group]
+    local btn = slot and slot.name ~= '' and stanceButtons[slot.name]
+    if btn and btn.setOn then btn:setOn(true) end
   end
 end
 
