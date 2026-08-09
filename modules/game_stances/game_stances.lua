@@ -76,10 +76,35 @@ local function refreshBaseSkills()
     end
 end
 
+-- Every skill any stance can touch. Switching stances has to wipe the previous
+-- one's marks first, otherwise the notes from both stances sit on the skills
+-- at once and the hover shows an effect the player no longer has.
+local function clearStanceMarks()
+    local sk = skills()
+    if not sk then
+        return
+    end
+
+    local touched = { magiclevel = true }
+    for _, visual in pairs(stanceVisuals) do
+        for _, skillId in ipairs(visual.skills or {}) do
+            touched[skillId] = true
+        end
+    end
+
+    for skillId in pairs(touched) do
+        sk.setSkillTooltip(skillId, nil)
+    end
+    refreshBaseSkills()
+end
+
 local function applyVisuals()
     local visual = activeStance and stanceVisuals[activeStance]
+
+    -- start from a clean slate every time, so only the active stance is marked
+    clearStanceMarks()
+
     if not visual then
-        refreshBaseSkills()
         return
     end
 
