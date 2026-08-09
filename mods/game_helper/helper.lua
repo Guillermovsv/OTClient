@@ -715,9 +715,13 @@ local function openSpellPicker(entry, filter)
       if clientId then
         row:setImageClip(Spells.getImageClip(clientId, SPELL_PROFILE))
       end
-      row.onClick = function()
+      row.spellInfo = spell.info
+      -- single click focuses the row, double click takes it, and Select
+      -- applies whatever is focused
+      row.onDoubleClick = function()
         applySpell(entry, spell.info)
         closeSpellPicker()
+        return true
       end
     end
   end
@@ -728,9 +732,14 @@ local function openSpellPicker(entry, filter)
     row:setFocusable(false)
   end
 
-  spellPickerWindow:getChildById('pickerClear').onClick = function()
-    applySpell(entry, nil)
-    closeSpellPicker()
+  spellPickerWindow:getChildById('pickerSelect').onClick = function()
+    local focused = list:getFocusedChild()
+    if focused and focused.spellInfo then
+      applySpell(entry, focused.spellInfo)
+      closeSpellPicker()
+    else
+      displayInfoBox(tr('Select Spell'), tr('Pick a spell from the list first.'))
+    end
   end
   spellPickerWindow:getChildById('pickerCancel').onClick = closeSpellPicker
   spellPickerWindow.onEscape = closeSpellPicker
@@ -810,8 +819,13 @@ function wireSlots()
       end
       slot.onMouseRelease = function(self, _, mouseButton)
         if mouseButton == MouseRightButton then
-          setSlot(id, 0)
-          saveConfig()
+          local menu = g_ui.createWidget('PopupMenu')
+          menu:setGameMenu(true)
+          menu:addOption(tr('Clear'), function()
+            setSlot(id, 0)
+            saveConfig()
+          end)
+          menu:display(g_window.getMousePosition())
           return true
         elseif mouseButton == MouseLeftButton then
           startItemPick(id, accept)
@@ -827,10 +841,10 @@ function wireSlots()
     if slot then
       slot.onMouseRelease = function(self, _, mouseButton)
         if mouseButton == MouseRightButton then
-          local target = entry.get()
-          if target then target[entry.words] = '' target.icon = 0 end
-          setSpellSlot(entry.slot, 0, '')
-          saveConfig()
+          local menu = g_ui.createWidget('PopupMenu')
+          menu:setGameMenu(true)
+          menu:addOption(tr('Clear'), function() applySpell(entry, nil) end)
+          menu:display(g_window.getMousePosition())
           return true
         elseif mouseButton == MouseLeftButton then
           openSpellPicker(entry)
@@ -956,7 +970,6 @@ function populateUI()
   setChecked('hastePzBox', config.hastePz)
   setSpellSlot('hasteSlot', config.icon, config.hasteWords)
   setChecked('autoEatBox', config.autoEat)
-  setText('foodItem', config.foodItem or 0)
   setChecked('changeGoldBox', config.changeGold)
   setChecked('autoReconnectBox', config.autoReconnect)
   setChecked('comboOrderBox', config.comboOrder)
@@ -1018,7 +1031,6 @@ function saveFromUI()
   config.autoHaste = isChecked('autoHasteBox')
   config.hastePz   = isChecked('hastePzBox')
   config.autoEat   = isChecked('autoEatBox')
-  config.foodItem  = num('foodItem')
   config.changeGold = isChecked('changeGoldBox')
   config.autoReconnect = isChecked('autoReconnectBox')
   config.comboOrder = isChecked('comboOrderBox')
@@ -1372,6 +1384,44 @@ local function runCaster(player, states, now)
   end
 end
 
+-- Anything that restores health or mana outright is not ordinary food and must
+-- never be eaten by the auto-eater.
+local FOOD_NAME_BLOCKLIST = {
+  'potion', 'elixir', 'flask', 'rune', 'mana', 'health', 'spirit', 'life',
+}
+
+local function isPlainFood(item)
+  if not item or not item.getMarketData then return false end
+  local ok, data = pcall(item.getMarketData, item)
+  if not ok or not data or data.category ~= MarketCategory.Food then
+    return false
+  end
+  local name = (data.name or ''):lower()
+  for _, banned in ipairs(FOOD_NAME_BLOCKLIST) do
+    if name:find(banned, 1, true) then return false end
+  end
+  return true
+end
+
+-- Walk the open containers in their own order -- first container, then the
+-- second, and so on -- and return the first ordinary food found.
+function findFood()
+  local containers = g_game.getContainers()
+  local ids = {}
+  for id in pairs(containers) do table.insert(ids, id) end
+  table.sort(ids)
+
+  for _, id in ipairs(ids) do
+    local container = containers[id]
+    if container then
+      for _, item in ipairs(container:getItems()) do
+        if isPlainFood(item) then return item end
+      end
+    end
+  end
+  return nil
+end
+
 -- Exchange 100 gold -> platinum -> crystal by using the stacked coin on itself.
 -- Player:getItem() cannot be used here: it forwards to g_game.findPlayerItem,
 -- which is not bound in this client. Player:getItems() is plain Lua and works.
@@ -1441,11 +1491,15 @@ function loop()
     end
   end
 
-  -- 5) auto eat food
-  if config.autoEat and config.foodItem > 0 and ready('eat', now, 30000) then
-    g_game.useInventoryItem(config.foodItem)
-    fire('eat', now)
-    stats.foods = stats.foods + 1
+  -- 5) auto eat: take the first edible thing found by walking the containers in
+  -- order, so there is nothing to configure
+  if config.autoEat and ready('eat', now, 30000) then
+    local food = findFood()
+    if food then
+      g_game.use(food)
+      fire('eat', now)
+      stats.foods = stats.foods + 1
+    end
   end
 
   -- 6) change gold

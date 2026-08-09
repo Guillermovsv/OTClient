@@ -133,7 +133,7 @@ RTCStepper < UIWidget
     color: #c8c8c8
     anchors.left: spin.right
     anchors.verticalCenter: parent.verticalCenter
-    margin-left: 1
+    margin-left: 3
     phantom: true
   Button
     id: inc
@@ -142,7 +142,7 @@ RTCStepper < UIWidget
     height: 18
     anchors.left: pct.right
     anchors.verticalCenter: parent.verticalCenter
-    margin-left: 1
+    margin-left: 4
 
 // Spell chooser, styled like the spell list / hotkey assignment: icon on the
 // left, spell name and words beside it.
@@ -172,7 +172,7 @@ RTCSpellPickerWindow < MainWindow
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
-    anchors.bottom: pickerClear.top
+    anchors.bottom: pickerSelect.top
     margin-bottom: 8
     margin-right: 14
     padding: 1
@@ -187,8 +187,8 @@ RTCSpellPickerWindow < MainWindow
     pixels-scroll: true
 
   Button
-    id: pickerClear
-    !text: tr('Clear')
+    id: pickerSelect
+    !text: tr('Select')
     anchors.left: parent.left
     anchors.bottom: parent.bottom
     width: 90
@@ -374,25 +374,11 @@ MainWindow
       width: 176
       text: Auto Reconnect
 
-    RTCValueLabel
-      id: foodLabel
-      anchors.top: autoReconnectBox.bottom
-      anchors.left: parent.left
-      margin-top: 8
-      text: Food id:
-
-    TextEdit
-      id: foodItem
-      anchors.verticalCenter: foodLabel.verticalCenter
-      anchors.left: foodLabel.right
-      margin-left: 6
-      width: 74
-      height: 20
 
     // bound hotkeys, pinned to the bottom so the sidebar reads as full
     RTCSep
       id: sideSep3
-      anchors.top: foodItem.bottom
+      anchors.top: autoReconnectBox.bottom
       anchors.left: parent.left
       anchors.right: parent.right
       margin-top: 8
@@ -983,7 +969,7 @@ MainWindow
     // --- rune (right column)
     RTCColumnLabel
       id: runeTitle
-      anchors.top: stance1Slot.bottom
+      anchors.top: stanceGrid.bottom
       anchors.left: parent.left
       margin-left: 400
       margin-top: 14
