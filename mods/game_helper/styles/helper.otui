@@ -23,7 +23,7 @@ RTCCheck < CheckBox
   font: verdana-11px-rounded
 
 // Empty slots show a dotted placeholder, like the reference. helper.lua hides
-// the placeholder as soon as a real item is bound to the slot.
+// the placeholder as soon as something is bound to the slot.
 RTCSlot < Item
   size: 34 34
   virtual: true
@@ -31,7 +31,31 @@ RTCSlot < Item
   Label
     id: placeholder
     anchors.fill: parent
-    text: · · · ·
+    text: . . . .
+    text-align: center
+    font: verdana-11px-rounded
+    color: #6a6a6a
+    phantom: true
+
+// Spell slots draw from the spell atlas by clientId rather than holding an
+// item, so they cannot be UIItem. Clicking one opens the spell picker.
+RTCSpellSlot < UIWidget
+  size: 34 34
+  image-source: /images/ui/item
+  image-border: 1
+
+  UIWidget
+    id: icon
+    anchors.centerIn: parent
+    size: 32 32
+    image-source: /images/game/spells/spell-icons-32x32
+    visible: false
+    phantom: true
+
+  Label
+    id: placeholder
+    anchors.fill: parent
+    text: . . . .
     text-align: center
     font: verdana-11px-rounded
     color: #6a6a6a
@@ -56,13 +80,13 @@ RTCInfo < Button
 RTCSep < HorizontalSeparator
   height: 2
 
-// A percent stepper: [<] [ nn% ] [>]
+// A percent stepper: [<] [ nn% ] [>]  (arrows are deliberately narrow)
 RTCStepper < UIWidget
-  size: 84 20
+  size: 62 20
   Button
     id: dec
     text: <
-    width: 16
+    width: 5
     height: 18
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
@@ -81,7 +105,7 @@ RTCStepper < UIWidget
   Button
     id: inc
     text: >
-    width: 16
+    width: 5
     height: 18
     anchors.left: spin.right
     anchors.verticalCenter: parent.verticalCenter
@@ -89,7 +113,7 @@ RTCStepper < UIWidget
 
 MainWindow
   id: helperWindow
-  size: 900 632
+  size: 900 474
   text: RTC Helper
   visible: false
   @onEscape: modules.game_helper.hide()
@@ -190,7 +214,7 @@ MainWindow
       margin-top: 8
       text: Auto Haste
 
-    RTCSlot
+    RTCSpellSlot
       id: hasteSlot
       anchors.top: hasteTitle.bottom
       anchors.left: parent.left
@@ -330,7 +354,7 @@ MainWindow
       text: Spell Healing
 
     // One compact row per heal: slot, percent, enable, info, spell words.
-    RTCSlot
+    RTCSpellSlot
       id: heal1Slot
       anchors.top: spellHealTitle.bottom
       anchors.left: parent.left
@@ -360,7 +384,7 @@ MainWindow
       width: 116
       height: 18
 
-    RTCSlot
+    RTCSpellSlot
       id: heal2Slot
       anchors.top: heal1Slot.bottom
       anchors.left: parent.left
@@ -390,7 +414,7 @@ MainWindow
       width: 116
       height: 18
 
-    RTCSlot
+    RTCSpellSlot
       id: heal3Slot
       anchors.top: heal2Slot.bottom
       anchors.left: parent.left
@@ -509,7 +533,7 @@ MainWindow
       margin-left: 560
       text: Mana Training
 
-    RTCSlot
+    RTCSpellSlot
       id: manaTrainSlot
       anchors.top: manaTrainTitle.bottom
       anchors.left: parent.left
@@ -706,7 +730,7 @@ MainWindow
       text: Priority
 
     // --- attack rows
-    RTCSlot
+    RTCSpellSlot
       id: atk1Slot
       anchors.top: colSpell.bottom
       anchors.left: parent.left
@@ -744,7 +768,7 @@ MainWindow
       width: 108
       height: 18
 
-    RTCSlot
+    RTCSpellSlot
       id: atk2Slot
       anchors.top: atk1Slot.bottom
       anchors.left: parent.left
@@ -782,7 +806,7 @@ MainWindow
       width: 108
       height: 18
 
-    RTCSlot
+    RTCSpellSlot
       id: atk3Slot
       anchors.top: atk2Slot.bottom
       anchors.left: parent.left
@@ -820,7 +844,7 @@ MainWindow
       width: 108
       height: 18
 
-    RTCSlot
+    RTCSpellSlot
       id: atk4Slot
       anchors.top: atk3Slot.bottom
       anchors.left: parent.left
@@ -858,7 +882,7 @@ MainWindow
       width: 108
       height: 18
 
-    RTCSlot
+    RTCSpellSlot
       id: atk5Slot
       anchors.top: atk4Slot.bottom
       anchors.left: parent.left
@@ -905,13 +929,13 @@ MainWindow
       margin-top: 16
       text: Stance
 
-    RTCSlot
+    RTCSpellSlot
       id: stance1Slot
       anchors.top: stanceTitle.bottom
       anchors.left: parent.left
       margin-left: 440
       margin-top: 6
-    RTCSlot
+    RTCSpellSlot
       id: stance2Slot
       anchors.top: stance1Slot.top
       anchors.left: stance1Slot.right

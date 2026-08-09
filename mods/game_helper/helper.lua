@@ -14,6 +14,18 @@ local SETTINGS_KEY = 'RTCHelper'
 local PRESETS_KEY = 'RTCHelperPresets'
 local TICK_MS = 200
 
+-- game_spelllist keeps its profile private, so name it here.
+local SPELL_PROFILE = 'Default'
+
+-- Stances offered by the stance slots. game_stances drives the visuals; these
+-- are the castable stance spells as defined in the spell library.
+local STANCE_NAMES = {
+  ['Protector'] = true, ['Blood Rage'] = true, ['Sharpshooter'] = true,
+  ['Divine Defiance'] = true, ['Elemental Synthesis'] = true,
+  ['Shared Conservation'] = true, ['Master of Flames'] = true,
+  ['Master of Thunder'] = true, ['Master of Decay'] = true,
+}
+
 local stats = {
   heals = 0, potions = 0, attacks = 0, runes = 0,
   hastes = 0, foods = 0, manaTrains = 0, exTrains = 0, golds = 0,
@@ -22,15 +34,16 @@ local stats = {
 local function defaultConfig()
   return {
     enabled = false,
-    autoHaste = false, hastePz = false, hasteWords = 'utani hur', hasteItem = 0,
+    autoHaste = false, hastePz = false, hasteWords = 'utani hur', icon = 0,
     autoEat = false, foodItem = 3725,
     changeGold = false, autoReconnect = false,
     comboOrder = false, hotkeyPriority = false,
-    stance = { item1 = 0, item2 = 0 },
+    -- stance slots hold spells, not items
+    stance = { words1 = '', icon1 = 0, words2 = '', icon2 = 0 },
     heals = {
-      { enabled = false, words = '', hp = 80, item = 0 },
-      { enabled = false, words = '', hp = 60, item = 0 },
-      { enabled = false, words = '', hp = 40, item = 0 },
+      { enabled = false, words = '', hp = 80, icon = 0 },
+      { enabled = false, words = '', hp = 60, icon = 0 },
+      { enabled = false, words = '', hp = 40, icon = 0 },
     },
     -- rows 1-2 drink on health percent, row 3 on mana percent
     potions = {
@@ -38,14 +51,14 @@ local function defaultConfig()
       { enabled = false, item = 0, pct = 50, kind = 'hp' },
       { enabled = false, item = 0, pct = 40, kind = 'mana' },
     },
-    manaTrain = { enabled = false, words = '', pct = 100, item = 0 },
+    manaTrain = { enabled = false, words = '', pct = 100, icon = 0 },
     exTrain = { enabled = false, item = 0 },
     attacks = {
-      { enabled = false, words = '', mana = 20, mobs = 1, prio = 1, item = 0 },
-      { enabled = false, words = '', mana = 20, mobs = 1, prio = 2, item = 0 },
-      { enabled = false, words = '', mana = 20, mobs = 1, prio = 3, item = 0 },
-      { enabled = false, words = '', mana = 20, mobs = 1, prio = 4, item = 0 },
-      { enabled = false, words = '', mana = 20, mobs = 1, prio = 5, item = 0 },
+      { enabled = false, words = '', mana = 20, mobs = 1, prio = 1, icon = 0 },
+      { enabled = false, words = '', mana = 20, mobs = 1, prio = 2, icon = 0 },
+      { enabled = false, words = '', mana = 20, mobs = 1, prio = 3, icon = 0 },
+      { enabled = false, words = '', mana = 20, mobs = 1, prio = 4, icon = 0 },
+      { enabled = false, words = '', mana = 20, mobs = 1, prio = 5, icon = 0 },
     },
     shooter = false, autoTarget = false,
     rune = { enabled = false, item = 0, mobs = 1, prio = 1 },
@@ -104,23 +117,58 @@ function terminate()
   if helperWindow then helperWindow:destroy() helperWindow = nil end
 end
 
+-- Render the player into the sidebar preview.
+--
+-- UICreature:setOutfit() stores the outfit exactly as given, and an Outfit
+-- built in Lua carries no category -- Outfit::m_category defaults to
+-- ThingInvalidCategory (4). Drawing that creature asked for thing type 0 in
+-- category 4 on every frame, which is where the endless
+-- "Invalid thing type client id 0 in category 4" errors came from, and why the
+-- preview stayed blank. Creature:setOutfit() fixes the category up, so build a
+-- Creature first and hand that to the widget, the same way the character list
+-- renders outfits.
+local previewCreature = nil
+
+function updatePreview(player)
+  if not helperWindow then return end
+  local preview = helperWindow:recursiveGetChildById('charPreview')
+  if not preview or not preview.setCreature then return end
+
+  local outfit = player and player:getOutfit()
+  if not outfit or (tonumber(outfit.type) or 0) <= 0 then
+    preview:setCreature(nil)
+    previewCreature = nil
+    return
+  end
+
+  if not previewCreature then
+    previewCreature = Creature.create()
+  end
+  previewCreature:setOutfit(outfit)
+  previewCreature:setDirection(2)
+  preview:setCreature(previewCreature)
+  preview:setPadding(0)
+end
+
 function onGameStart()
   local player = g_game.getLocalPlayer()
   if player and helperWindow then
     -- the character name is the sidebar panel's own title bar
     local name = helperWindow:recursiveGetChildById('sidebar')
     if name then name:setText(player:getName()) end
-    local preview = helperWindow:recursiveGetChildById('charPreview')
-    if preview and preview.setOutfit then
-      preview:setOutfit(player:getOutfit())
-      if preview.setCreatureSize then preview:setCreatureSize(64) end
-    end
+    updatePreview(player)
   end
   refreshStatus()
 end
 
 function onGameEnd()
-  if helperWindow then helperWindow:hide() end
+  if helperWindow then
+    helperWindow:hide()
+    -- drop the preview creature so nothing tries to draw it while offline
+    local preview = helperWindow:recursiveGetChildById('charPreview')
+    if preview and preview.setCreature then preview:setCreature(nil) end
+    previewCreature = nil
+  end
 end
 
 function selectTab(which)
@@ -230,7 +278,7 @@ local function normalizeConfig(saved)
   local base = defaultConfig()
   if type(saved) ~= 'table' then return base end
 
-  for _, key in ipairs({ 'enabled', 'autoHaste', 'hastePz', 'hasteWords', 'hasteItem',
+  for _, key in ipairs({ 'enabled', 'autoHaste', 'hastePz', 'hasteWords', 'icon',
                          'autoEat', 'foodItem', 'changeGold', 'autoReconnect',
                          'comboOrder', 'hotkeyPriority', 'shooter', 'autoTarget',
                          'helperKey', 'targetKey' }) do
@@ -403,14 +451,26 @@ function wireSteppers()
   end
 end
 
--- Drag an item from your inventory/containers onto a slot to bind it; right
--- click a slot to clear it. Mirrors how the action bar accepts drops.
-local SLOT_IDS = {
-  'hasteSlot', 'heal1Slot', 'heal2Slot', 'heal3Slot',
-  'pot1Slot', 'pot2Slot', 'pot3Slot', 'manaTrainSlot', 'exTrainSlot',
-  'atk1Slot', 'atk2Slot', 'atk3Slot', 'atk4Slot', 'atk5Slot', 'runeSlot',
-  'stance1Slot', 'stance2Slot',
+-- Slots holding an item: drag one in, or left click to pick with the crosshair,
+-- right click to clear.
+local ITEM_SLOT_IDS = { 'pot1Slot', 'pot2Slot', 'pot3Slot', 'runeSlot', 'exTrainSlot' }
+
+-- Slots holding a spell: left click opens the spell picker, right click clears.
+-- Each maps to the config field the chosen spell is written into.
+local SPELL_SLOTS = {
+  { slot = 'hasteSlot',     get = function() return config end,        words = 'hasteWords' },
+  { slot = 'heal1Slot',     get = function() return config.heals[1] end,   words = 'words' },
+  { slot = 'heal2Slot',     get = function() return config.heals[2] end,   words = 'words' },
+  { slot = 'heal3Slot',     get = function() return config.heals[3] end,   words = 'words' },
+  { slot = 'manaTrainSlot', get = function() return config.manaTrain end,  words = 'words' },
+  { slot = 'atk1Slot',      get = function() return config.attacks[1] end, words = 'words' },
+  { slot = 'atk2Slot',      get = function() return config.attacks[2] end, words = 'words' },
+  { slot = 'atk3Slot',      get = function() return config.attacks[3] end, words = 'words' },
+  { slot = 'atk4Slot',      get = function() return config.attacks[4] end, words = 'words' },
+  { slot = 'atk5Slot',      get = function() return config.attacks[5] end, words = 'words' },
 }
+
+local SLOT_IDS = ITEM_SLOT_IDS
 
 -- Creatures and Priority are dropdowns, shown as "1+" and "1st" like the
 -- reference. Options carry the plain number as their data.
@@ -448,9 +508,133 @@ function wireCombos()
   fillCombo('runePrio', ORDINALS)
 end
 
+-- Spell icon slots -----------------------------------------------------------
+local function setSpellSlot(id, clientId, words)
+  local slot = w(id)
+  if not slot then return end
+  clientId = tonumber(clientId) or 0
+  local icon = slot:getChildById('icon')
+  local ph = slot:getChildById('placeholder')
+  if icon then
+    if clientId > 0 then
+      icon:setImageClip(Spells.getImageClip(clientId, SPELL_PROFILE))
+      icon:setVisible(true)
+    else
+      icon:setVisible(false)
+    end
+  end
+  if ph then ph:setVisible(clientId <= 0) end
+  slot:setTooltip(words and words ~= '' and words or '')
+end
+
+-- Spells the logged in character can actually use, by vocation.
+local function spellsForVocation()
+  local player = g_game.getLocalPlayer()
+  local vocation = player and player:getVocation()
+  local out = {}
+  for name, info in pairs(SpellInfo[SPELL_PROFILE] or {}) do
+    local ok = true
+    if vocation and info.vocations then
+      ok = false
+      for _, v in ipairs(info.vocations) do
+        if v == vocation then ok = true break end
+      end
+    end
+    if ok then table.insert(out, { name = name, info = info }) end
+  end
+  table.sort(out, function(a, b) return a.name < b.name end)
+  return out
+end
+
+-- Popup listing spells; `filter` narrows it (used for the stance slots).
+local function openSpellPicker(entry, filter)
+  local list = spellsForVocation()
+  local menu = g_ui.createWidget('PopupMenu')
+  menu:setGameMenu(true)
+
+  local added = 0
+  for _, spell in ipairs(list) do
+    if not filter or filter(spell.name, spell.info) then
+      added = added + 1
+      menu:addOption(spell.name .. "  '" .. (spell.info.words or '') .. "'", function()
+        local target = entry.get()
+        if target then
+          target[entry.words] = spell.info.words or ''
+          target[entry.icon or 'icon'] = tonumber(spell.info.clientId) or 0
+        end
+        setSpellSlot(entry.slot, spell.info.clientId, spell.info.words)
+        if entry.wordsField then setText(entry.wordsField, spell.info.words or '') end
+        saveConfig()
+      end)
+    end
+  end
+
+  if added == 0 then
+    menu:addOption(tr('No spells available for this vocation'), function() end)
+  else
+    menu:addSeparator()
+    menu:addOption(tr('Clear'), function()
+      local target = entry.get()
+      if target then
+        target[entry.words] = ''
+        target[entry.icon or 'icon'] = 0
+      end
+      setSpellSlot(entry.slot, 0, '')
+      if entry.wordsField then setText(entry.wordsField, '') end
+      saveConfig()
+    end)
+  end
+
+  menu:display(g_window.getMousePosition())
+end
+
+-- Item slots: crosshair pick ---------------------------------------------------
+-- Left clicking an item slot grabs the mouse and switches to the crosshair, the
+-- same way "use with" does. The next click on any item widget (inventory,
+-- container, or another slot) binds that item.
+local pickGrabber = nil
+
+local function startItemPick(id)
+  if g_ui.isMouseGrabbed() then return end
+
+  if not pickGrabber then
+    pickGrabber = g_ui.createWidget('UIWidget', g_ui.getRootWidget())
+    pickGrabber:setVisible(false)
+    pickGrabber:setFocusable(false)
+  end
+
+  pickGrabber.onMouseRelease = function(self, mousePos, mouseButton)
+    g_mouse.popCursor('target')
+    self:ungrabMouse()
+
+    if mouseButton == MouseLeftButton then
+      -- walk up from whatever is under the cursor until something carries an
+      -- item id: inventory slots, container slots and our own slots all do.
+      local widget = g_ui.getRootWidget():recursiveGetChildByPos(mousePos, false)
+      while widget do
+        if widget.getItemId then
+          local picked = widget:getItemId()
+          if picked and picked > 0 then
+            setSlot(id, picked)
+            saveConfig()
+            break
+          end
+          break
+        end
+        widget = widget:getParent()
+      end
+    end
+    return true
+  end
+
+  pickGrabber:grabMouse()
+  g_mouse.pushCursor('target')
+end
+
 function wireSlots()
   if not helperWindow then return end
-  for _, id in ipairs(SLOT_IDS) do
+
+  for _, id in ipairs(ITEM_SLOT_IDS) do
     local slot = w(id)
     if slot then
       slot:setDraggable(false)
@@ -458,11 +642,73 @@ function wireSlots()
         local thing = draggedWidget and draggedWidget.currentDragThing
         if not thing or not thing.getId then return false end
         setSlot(id, thing:getId())
+        saveConfig()
         return true
       end
       slot.onMouseRelease = function(self, _, mouseButton)
         if mouseButton == MouseRightButton then
           setSlot(id, 0)
+          saveConfig()
+          return true
+        elseif mouseButton == MouseLeftButton then
+          startItemPick(id)
+          return true
+        end
+        return false
+      end
+    end
+  end
+
+  for _, entry in ipairs(SPELL_SLOTS) do
+    local slot = w(entry.slot)
+    if slot then
+      slot.onMouseRelease = function(self, _, mouseButton)
+        if mouseButton == MouseRightButton then
+          local target = entry.get()
+          if target then target[entry.words] = '' target.icon = 0 end
+          setSpellSlot(entry.slot, 0, '')
+          saveConfig()
+          return true
+        elseif mouseButton == MouseLeftButton then
+          openSpellPicker(entry)
+          return true
+        end
+        return false
+      end
+    end
+  end
+  -- keep the words field and the icon in step when typed by hand
+  for _, entry in ipairs(SPELL_SLOTS) do
+    if entry.wordsField then
+      local field = w(entry.wordsField)
+      if field then
+        field.onTextChange = function(_, text)
+          local target = entry.get()
+          if target then target[entry.words] = text end
+        end
+      end
+    end
+  end
+
+  -- Stance slots offer only the stance spells, still filtered by vocation.
+  for i, id in ipairs({ 'stance1Slot', 'stance2Slot' }) do
+    local slot = w(id)
+    if slot then
+      local entry = {
+        slot  = id,
+        get   = function() return config.stance end,
+        words = 'words' .. i,
+        icon  = 'icon' .. i,
+      }
+      slot.onMouseRelease = function(self, _, mouseButton)
+        if mouseButton == MouseRightButton then
+          config.stance[entry.words] = ''
+          config.stance[entry.icon] = 0
+          setSpellSlot(id, 0, '')
+          saveConfig()
+          return true
+        elseif mouseButton == MouseLeftButton then
+          openSpellPicker(entry, function(name) return STANCE_NAMES[name] == true end)
           return true
         end
         return false
@@ -478,22 +724,22 @@ function populateUI()
   setChecked('autoHasteBox', config.autoHaste)
   setChecked('hastePzBox', config.hastePz)
   setText('hasteWords', config.hasteWords or '')
-  setSlot('hasteSlot', config.hasteItem)
+  setSpellSlot('hasteSlot', config.icon, config.hasteWords)
   setChecked('autoEatBox', config.autoEat)
   setText('foodItem', config.foodItem or 0)
   setChecked('changeGoldBox', config.changeGold)
   setChecked('autoReconnectBox', config.autoReconnect)
   setChecked('comboOrderBox', config.comboOrder)
   setChecked('hotkeyPriorityBox', config.hotkeyPriority)
-  setSlot('stance1Slot', config.stance.item1)
-  setSlot('stance2Slot', config.stance.item2)
+  setSpellSlot('stance1Slot', config.stance.icon1, config.stance.words1)
+  setSpellSlot('stance2Slot', config.stance.icon2, config.stance.words2)
 
   for i = 1, #config.heals do
     local h = config.heals[i]
     setText('heal' .. i .. 'Words', h.words or '')
     setStepper('heal' .. i .. 'Hp', h.hp or 0)
     setChecked('heal' .. i .. 'Box', h.enabled)
-    setSlot('heal' .. i .. 'Slot', h.item)
+    setSpellSlot('heal' .. i .. 'Slot', h.icon, h.words)
   end
 
   local potStepper = { 'pot1Hp', 'pot2Hp', 'pot3Mana' }
@@ -506,7 +752,7 @@ function populateUI()
   setChecked('manaTrainBox', config.manaTrain.enabled)
   setText('manaTrainWords', config.manaTrain.words or '')
   setStepper('manaTrainPct', config.manaTrain.pct or 100)
-  setSlot('manaTrainSlot', config.manaTrain.item)
+  setSpellSlot('manaTrainSlot', config.manaTrain.icon, config.manaTrain.words)
 
   setChecked('exTrainBox', config.exTrain.enabled)
   setSlot('exTrainSlot', config.exTrain.item)
@@ -518,7 +764,7 @@ function populateUI()
     setCombo('atk' .. i .. 'Mobs', a.mobs or 1)
     setCombo('atk' .. i .. 'Prio', a.prio or i)
     setChecked('atk' .. i .. 'Box', a.enabled)
-    setSlot('atk' .. i .. 'Slot', a.item)
+    setSpellSlot('atk' .. i .. 'Slot', a.icon, a.words)
   end
 
   setChecked('shooterBox', config.shooter)
@@ -542,21 +788,17 @@ function saveFromUI()
   config.autoHaste = isChecked('autoHasteBox')
   config.hastePz   = isChecked('hastePzBox')
   config.hasteWords = getText('hasteWords')
-  config.hasteItem = getSlot('hasteSlot', config.hasteItem)
   config.autoEat   = isChecked('autoEatBox')
   config.foodItem  = num('foodItem')
   config.changeGold = isChecked('changeGoldBox')
   config.autoReconnect = isChecked('autoReconnectBox')
   config.comboOrder = isChecked('comboOrderBox')
   config.hotkeyPriority = isChecked('hotkeyPriorityBox')
-  config.stance.item1 = getSlot('stance1Slot', config.stance.item1)
-  config.stance.item2 = getSlot('stance2Slot', config.stance.item2)
 
   for i = 1, #config.heals do
     config.heals[i].words   = getText('heal' .. i .. 'Words')
     config.heals[i].hp      = getStepper('heal' .. i .. 'Hp', config.heals[i].hp)
     config.heals[i].enabled = isChecked('heal' .. i .. 'Box')
-    config.heals[i].item    = getSlot('heal' .. i .. 'Slot', config.heals[i].item)
   end
 
   local potStepperIds = { 'pot1Hp', 'pot2Hp', 'pot3Mana' }
@@ -569,7 +811,6 @@ function saveFromUI()
   config.manaTrain.enabled = isChecked('manaTrainBox')
   config.manaTrain.words   = getText('manaTrainWords')
   config.manaTrain.pct     = getStepper('manaTrainPct', config.manaTrain.pct)
-  config.manaTrain.item    = getSlot('manaTrainSlot', config.manaTrain.item)
 
   config.exTrain.enabled = isChecked('exTrainBox')
   config.exTrain.item    = getSlot('exTrainSlot', config.exTrain.item)
@@ -580,7 +821,6 @@ function saveFromUI()
     config.attacks[i].mobs    = getCombo('atk' .. i .. 'Mobs', config.attacks[i].mobs)
     config.attacks[i].prio    = getCombo('atk' .. i .. 'Prio', config.attacks[i].prio)
     config.attacks[i].enabled = isChecked('atk' .. i .. 'Box')
-    config.attacks[i].item    = getSlot('atk' .. i .. 'Slot', config.attacks[i].item)
   end
 
   config.shooter    = isChecked('shooterBox')
@@ -832,16 +1072,18 @@ end
 
 -- Rows in the order the caster should try them: by the Priority column when
 -- "Combo in priority order" is on, otherwise in list order.
+-- The Priority column is always honoured: rows are tried in the order you
+-- chose, with the list position only breaking ties between equal priorities.
 local function attackOrder()
   local rows = {}
   for i, a in ipairs(config.attacks) do
     table.insert(rows, { idx = i, row = a })
   end
-  if config.comboOrder then
-    table.sort(rows, function(x, y)
-      return (x.row.prio or x.idx) < (y.row.prio or y.idx)
-    end)
-  end
+  table.sort(rows, function(x, y)
+    local px, py = (x.row.prio or x.idx), (y.row.prio or y.idx)
+    if px ~= py then return px < py end
+    return x.idx < y.idx
+  end)
   return rows
 end
 
@@ -863,13 +1105,17 @@ local function runCaster(player, states, now)
   local mana = manaPercent(player)
   local count = #mobs
 
-  -- attack spells: first matching row, one cast per tick
+  -- Attack spells in priority order, one cast per tick. With "Combo in
+  -- priority order" on, each tick continues past rows that already fired this
+  -- rotation so the whole combo goes off in sequence; with it off only the
+  -- highest-priority match is ever cast.
   for _, entry in ipairs(attackOrder()) do
     local a = entry.row
+    local gate = 'atk' .. entry.idx
     if a.enabled and a.words ~= '' and mana >= a.mana and count >= a.mobs
-        and ready('atk' .. entry.idx, now, TICK_MS) then
+        and ready(gate, now, config.comboOrder and (a.cooldown or 2000) or TICK_MS) then
       g_game.talk(a.words)
-      fire('atk' .. entry.idx, now)
+      fire(gate, now)
       stats.attacks = stats.attacks + 1
       return
     end
