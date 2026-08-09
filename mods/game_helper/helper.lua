@@ -129,8 +129,13 @@ function init()
   connect(g_game, { onGameStart = onGameStart, onGameEnd = onGameEnd })
   connect(LocalPlayer, { onOutfitChange = onOutfitChange })
 
+  -- MainToggleButton picks its state by clipping the image: 0 0 20 20 normally
+  -- and 20 0 20 20 when on. topbuttons/combatcontrols is a single 21x21 icon,
+  -- so the active clip fell outside it and the button went blank, and the
+  -- normal state carried none of the chrome the other controls have. This is a
+  -- proper 40x20 two-state sheet built on the same button background.
   helperButton = modules.client_topmenu.addRightGameToggleButton(
-    'helperButton', tr('RTC Helper'), '/images/topbuttons/combatcontrols', toggle)
+    'helperButton', tr('RTC Helper'), '/images/options/button_rtchelper', toggle)
 
   local root = (modules.game_interface and modules.game_interface.getRootPanel
     and modules.game_interface.getRootPanel()) or g_ui.getRootWidget()
