@@ -570,14 +570,15 @@ GoldLabel < FlatPanel
     anchors.verticalCenter: parent.verticalCenter
     text-align: right
 
+// The creatures sit flat on the panel like the real client: no cell background
+// of their own, and only the selected one is outlined in white over a faint
+// white wash. prey.lua used to paint an alternating grey behind every cell,
+// which drew a box around each monster.
 PreyCreatureBox < UICheckBox
   border-width: 1
-  border-color: #ffffff
-  // The creatures sit flat on the panel like the real client; only the
-  // selected one is outlined. prey.lua used to paint an alternating grey
-  // behind every cell, which drew a box around each monster.
+  border-color: alpha
   background-color: alpha
-  padding: 3
+  padding: 1
   @onClick: modules.game_prey.onItemBoxChecked(self)
 
   UICreature
@@ -585,13 +586,17 @@ PreyCreatureBox < UICheckBox
     phantom: true
     anchors.fill: parent
     image-color: #ffffffff
-    margin-top: 3
+    // scale the outfit to the cell instead of drawing it at sprite size, which
+    // left the monsters small in the middle of a large cell
+    fixed-creature-size: true
 
-  $checked on:
+  $checked:
     border-color: #ffffff
+    background-color: #ffffff33
 
   $!checked:
     border-color: alpha
+    background-color: alpha
 
   $!on:
     image-color: #ffffff88

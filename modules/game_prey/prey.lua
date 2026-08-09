@@ -1755,6 +1755,9 @@ function onPreySelection(slot, names, outfits, timeUntilFreeReroll, wildcards, o
         name = capitalFormatStr(name)
         box:setTooltip(name)
         box.creature:setOutfit(outfits[i])
+        -- the first creature starts selected so the panel is never in a state
+        -- where Choose Prey refuses because nothing is picked
+        box:setChecked(i == 1)
     end
     prey.inactive.choose.choosePreyButton.onClick = function()
         for i, child in pairs(list:getChildren()) do
@@ -1815,6 +1818,9 @@ function onPreySelectionChangeMonster(slot, names, outfits, bonusType, bonusValu
         name = capitalFormatStr(name)
         box:setTooltip(name)
         box.creature:setOutfit(outfits[i])
+        -- the first creature starts selected so the panel is never in a state
+        -- where Choose Prey refuses because nothing is picked
+        box:setChecked(i == 1)
     end
     prey.inactive.choose.choosePreyButton.onClick = function()
         for i, child in pairs(list:getChildren()) do
