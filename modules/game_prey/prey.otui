@@ -509,6 +509,10 @@ RerollButton < FlatPanel
       anchors.right: parent.right
       height: 15
       text-align: center
+      // sunken dark bar like the real client, with the amber only showing as
+      // the fill while a reroll cooldown is actually running
+      image-source: /images/ui/backdrop-dark-grey
+      image-border: 5
       background-color: #C28400
 
     UIButton

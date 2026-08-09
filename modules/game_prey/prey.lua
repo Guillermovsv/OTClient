@@ -443,7 +443,7 @@ end
 
 function onPreyFreeRerolls(slot, timeleft)
     local prey = preyWindow['slot' .. (slot + 1)]
-    local percent = (timeleft / (20 * 60)) * 100
+    local percent = math.max(0, math.min(100, (timeleft / (20 * 60)) * 100))
     local desc = timeleftTranslation(timeleft * 60)
     if not prey then
         return
@@ -518,8 +518,12 @@ function setTimeUntilFreeReroll(slot, timeUntilFreeReroll) -- minutes
     if not prey then
         return
     end
-    local percent = (timeUntilFreeReroll / (20 * 60)) * 100
+    -- Clamp before working out the percentage. Doing it afterwards left the
+    -- bar computed from the unclamped value, so a free reroll drew a full
+    -- orange bar instead of the empty one the real client shows.
     timeUntilFreeReroll = timeUntilFreeReroll > 720000 and 0 or timeUntilFreeReroll
+    local percent = (timeUntilFreeReroll / (20 * 60)) * 100
+    percent = math.max(0, math.min(100, percent))
     local desc = timeleftTranslation(timeUntilFreeReroll)
     for i, panel in pairs({ prey.active, prey.inactive }) do
         if panel and panel.reroll and panel.reroll.button and panel.reroll.price then
