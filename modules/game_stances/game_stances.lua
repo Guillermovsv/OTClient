@@ -77,9 +77,11 @@ local function refreshBaseSkills()
 end
 
 -- Every skill any stance can touch. Switching stances has to wipe the previous
--- one's marks first, otherwise the notes from both stances sit on the skills
--- at once and the hover shows an effect the player no longer has.
-local function clearStanceMarks()
+-- one's note first, otherwise both stances describe the skills at once and the
+-- hover shows an effect the player no longer has. Only the tooltips are
+-- cleared here: resetSkillColor indexes the widget without checking it exists,
+-- and refreshBaseSkills repaints the colours anyway.
+local function clearStanceTooltips()
     local sk = skills()
     if not sk then
         return
@@ -95,31 +97,47 @@ local function clearStanceMarks()
     for skillId in pairs(touched) do
         sk.setSkillTooltip(skillId, nil)
     end
-    refreshBaseSkills()
 end
 
+-- game_skills calls back into this module from onMagicLevelChange and
+-- onSkillChange, and refreshBaseSkills drives exactly those, so applying the
+-- visuals re-enters itself. The guard makes the nested call a no-op instead of
+-- recursing until the Lua stack overflows.
+local applyingVisuals = false
+
 local function applyVisuals()
-    local visual = activeStance and stanceVisuals[activeStance]
-
-    -- start from a clean slate every time, so only the active stance is marked
-    clearStanceMarks()
-
-    if not visual then
+    if applyingVisuals then
         return
     end
+    applyingVisuals = true
 
-    local sk = skills()
-    if not sk then
-        return
-    end
+    -- setSkillColor reaches into the skill widget without checking it is there,
+    -- so a stance naming a skill this window does not show would throw and
+    -- leave the guard raised, freezing every later update.
+    local ok, err = pcall(function()
+        clearStanceTooltips()
+        refreshBaseSkills()
 
-    if visual.magic then
-        sk.setSkillColor('magiclevel', '#008b00')
-        sk.setSkillTooltip('magiclevel', visual.name .. ': ' .. visual.tooltip)
-    end
-    for _, skillId in ipairs(visual.skills or {}) do
-        sk.setSkillColor(skillId, '#008b00')
-        sk.setSkillTooltip(skillId, visual.name .. ': ' .. visual.tooltip)
+        local visual = activeStance and stanceVisuals[activeStance]
+        local sk = visual and skills()
+        if not sk then
+            return
+        end
+
+        if visual.magic then
+            sk.setSkillColor('magiclevel', '#008b00')
+            sk.setSkillTooltip('magiclevel', visual.name .. ': ' .. visual.tooltip)
+        end
+        for _, skillId in ipairs(visual.skills or {}) do
+            sk.setSkillColor(skillId, '#008b00')
+            sk.setSkillTooltip(skillId, visual.name .. ': ' .. visual.tooltip)
+        end
+    end)
+
+    applyingVisuals = false
+
+    if not ok then
+        g_logger.error('game_stances: failed to apply stance visuals: ' .. tostring(err))
     end
 end
 
