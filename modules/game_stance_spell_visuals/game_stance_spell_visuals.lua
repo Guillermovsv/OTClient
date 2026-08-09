@@ -26,7 +26,7 @@ end
 -- TEMPORARY DIAGNOSTIC. Logs every spell-visual packet and why one is dropped,
 -- so it is possible to tell whether the server is sending opcode 233 at all.
 -- Remove this flag and the log lines once the recolouring is confirmed.
-local DEBUG_SPELL_VISUAL = true
+local DEBUG_SPELL_VISUAL = false
 
 local function debugLog(fmt, ...)
     if DEBUG_SPELL_VISUAL then

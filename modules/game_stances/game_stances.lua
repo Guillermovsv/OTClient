@@ -1,5 +1,9 @@
 local STANCE_OPCODE = 232
 
+-- Set to true to log every stance packet; pairs with DEBUG_SPELL_VISUAL in
+-- game_stance_spell_visuals for diagnosing the spell recolouring.
+local DEBUG_STANCE = false
+
 controllerStances = Controller:new()
 local activeStance = nil
 
@@ -108,10 +112,12 @@ end
 
 function controllerStances:onInit()
     ProtocolGame.registerExtendedOpcode(STANCE_OPCODE, function(protocol, opcode, buffer)
-        -- TEMPORARY DIAGNOSTIC, paired with the one in game_stance_spell_visuals:
-        -- shows the stance channel arriving so a silent recolour channel can be
-        -- told apart from a dead connection. Remove with the other one.
-        g_logger.info('[STANCE] opcode ' .. tostring(opcode) .. ' payload ' .. tostring(buffer))
+        -- Diagnostic for the stance channel, paired with the one in
+        -- game_stance_spell_visuals. Flip DEBUG_STANCE to true to see the
+        -- stance packets arriving while chasing a silent spell recolour.
+        if DEBUG_STANCE then
+            g_logger.info('[STANCE] opcode ' .. tostring(opcode) .. ' payload ' .. tostring(buffer))
+        end
         local state, stanceId = buffer:match('^(%a+)|(.+)$')
         if buffer == 'inactive|' then
             state = 'inactive'
