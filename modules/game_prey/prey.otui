@@ -573,6 +573,10 @@ GoldLabel < FlatPanel
 PreyCreatureBox < UICheckBox
   border-width: 1
   border-color: #ffffff
+  // The creatures sit flat on the panel like the real client; only the
+  // selected one is outlined. prey.lua used to paint an alternating grey
+  // behind every cell, which drew a box around each monster.
+  background-color: alpha
   padding: 3
   @onClick: modules.game_prey.onItemBoxChecked(self)
 

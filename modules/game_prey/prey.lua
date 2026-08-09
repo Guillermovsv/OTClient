@@ -1755,8 +1755,6 @@ function onPreySelection(slot, names, outfits, timeUntilFreeReroll, wildcards, o
         name = capitalFormatStr(name)
         box:setTooltip(name)
         box.creature:setOutfit(outfits[i])
-        local backgroundColor = (i % 2 == 1) and '#484848' or '#414141'
-        box:setBackgroundColor(backgroundColor)
     end
     prey.inactive.choose.choosePreyButton.onClick = function()
         for i, child in pairs(list:getChildren()) do
@@ -1817,8 +1815,6 @@ function onPreySelectionChangeMonster(slot, names, outfits, bonusType, bonusValu
         name = capitalFormatStr(name)
         box:setTooltip(name)
         box.creature:setOutfit(outfits[i])
-        local backgroundColor = (i % 2 == 1) and '#484848' or '#414141'
-        box:setBackgroundColor(backgroundColor)
     end
     prey.inactive.choose.choosePreyButton.onClick = function()
         for i, child in pairs(list:getChildren()) do
