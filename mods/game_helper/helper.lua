@@ -19,11 +19,14 @@ local SPELL_PROFILE = 'Default'
 
 -- Stances offered by the stance slots. game_stances drives the visuals; these
 -- are the castable stance spells as defined in the spell library.
+-- Per vocation this works out as: Knight 2, Paladin 2, Druid 2, Sorcerer 5
+-- (three Master stances plus the two Auras).
 local STANCE_NAMES = {
   ['Protector'] = true, ['Blood Rage'] = true, ['Sharpshooter'] = true,
   ['Divine Defiance'] = true, ['Elemental Synthesis'] = true,
   ['Shared Conservation'] = true, ['Master of Flames'] = true,
   ['Master of Thunder'] = true, ['Master of Decay'] = true,
+  ['Aura of Exposed Weakness'] = true, ['Aura of Sapped Strength'] = true,
 }
 
 -- Each slot only offers spells that make sense in it. Groups come from
