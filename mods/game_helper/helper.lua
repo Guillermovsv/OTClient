@@ -179,6 +179,17 @@ function refreshStatus()
   end
   local preset = helperWindow:recursiveGetChildById('presetLabel')
   if preset then preset:setText('Preset: ' .. currentPreset) end
+
+  local hk = helperWindow:recursiveGetChildById('helperKeyLabel')
+  if hk then
+    hk:setText('Helper: ' ..
+      ((config.helperKey ~= '' and config.helperKey) or 'none'))
+  end
+  local tk = helperWindow:recursiveGetChildById('targetKeyLabel')
+  if tk then
+    tk:setText('Target / Shooter: ' ..
+      ((config.targetKey ~= '' and config.targetKey) or 'none'))
+  end
 end
 
 -- ---------------------------------------------------------------------------
@@ -359,6 +370,9 @@ local function setSlot(id, itemId)
     if x.clearItem then x:clearItem() end
     if x.setItemVisible then x:setItemVisible(false) end
   end
+  -- dotted placeholder only while the slot is empty
+  local ph = x:getChildById('placeholder')
+  if ph then ph:setVisible(itemId <= 0) end
 end
 local function getSlot(id, fallback)
   local x = w(id)

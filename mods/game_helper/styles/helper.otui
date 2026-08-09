@@ -22,9 +22,20 @@ RTCCheck < CheckBox
   height: 16
   font: verdana-11px-rounded
 
+// Empty slots show a dotted placeholder, like the reference. helper.lua hides
+// the placeholder as soon as a real item is bound to the slot.
 RTCSlot < Item
   size: 34 34
   virtual: true
+
+  Label
+    id: placeholder
+    anchors.fill: parent
+    text: · · · ·
+    text-align: center
+    font: verdana-11px-rounded
+    color: #6a6a6a
+    phantom: true
 
 RTCTabButton < Button
   size: 40 34
@@ -269,6 +280,35 @@ MainWindow
       margin-left: 6
       width: 74
       height: 20
+
+    // bound hotkeys, pinned to the bottom so the sidebar reads as full
+    RTCSep
+      id: sideSep3
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.bottom: keysTitle.top
+      margin-bottom: 8
+
+    RTCSectionLabel
+      id: keysTitle
+      anchors.left: parent.left
+      anchors.bottom: helperKeyLabel.top
+      margin-bottom: 4
+      text: Hotkeys
+
+    RTCValueLabel
+      id: helperKeyLabel
+      anchors.left: parent.left
+      anchors.bottom: targetKeyLabel.top
+      margin-bottom: 3
+      text: Helper: none
+
+    RTCValueLabel
+      id: targetKeyLabel
+      anchors.left: parent.left
+      anchors.bottom: parent.bottom
+      margin-bottom: 8
+      text: Target / Shooter: none
 
   // --------------------------------------------------------- healing panel
   FlatPanel
@@ -531,6 +571,44 @@ MainWindow
       anchors.left: exTrainBox.right
       margin-left: 2
       tooltip: Drag an exercise weapon here. Used on a timer while in a protection zone.
+
+    // --- friend healing, laid out but not yet driven by the engine
+    RTCSep
+      id: healSep
+      anchors.top: heal3Slot.bottom
+      anchors.left: parent.left
+      anchors.right: parent.right
+      margin-top: 16
+
+    RTCColumnLabel
+      id: friendTitle
+      anchors.top: healSep.bottom
+      anchors.left: parent.left
+      margin-top: 10
+      text: Friend Healing
+      enabled: false
+
+    RTCInfo
+      id: friendInfo
+      anchors.verticalCenter: friendTitle.verticalCenter
+      anchors.left: friendTitle.right
+      margin-left: 6
+      tooltip: Not implemented yet. Healing party members is planned for a later update.
+
+    FlatPanel
+      id: friendPanel
+      anchors.top: friendTitle.bottom
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.bottom: parent.bottom
+      margin-top: 6
+      enabled: false
+      opacity: 0.45
+
+      RTCValueLabel
+        id: friendNote
+        anchors.centerIn: parent
+        text: Friend healing (Sio) is not available yet.
 
   // ---------------------------------------------------------- caster panel
   FlatPanel
