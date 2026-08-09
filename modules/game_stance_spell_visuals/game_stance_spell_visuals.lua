@@ -23,15 +23,42 @@ local function clear()
     g_client.clearMasterSorcererSpellVisual()
 end
 
+-- TEMPORARY DIAGNOSTIC. Logs every spell-visual packet and why one is dropped,
+-- so it is possible to tell whether the server is sending opcode 233 at all.
+-- Remove this flag and the log lines once the recolouring is confirmed.
+local DEBUG_SPELL_VISUAL = true
+
+local function debugLog(fmt, ...)
+    if DEBUG_SPELL_VISUAL then
+        g_logger.info('[STANCE-VISUAL] ' .. string.format(fmt, ...))
+    end
+end
+
 local function parse(buffer)
     local sequence, spellId, element, converted = buffer:match('^spell_visual|(%d+)|(%d+)|([%a]+)|([01])$')
+    if not sequence then
+        debugLog('unparsed payload: %s', tostring(buffer))
+        return nil
+    end
+
     sequence = tonumber(sequence)
     spellId = tonumber(spellId)
     converted = converted == '1'
+
+    debugLog('packet seq=%s spellId=%s element=%s converted=%s (natural element %s)',
+        tostring(sequence), tostring(spellId), tostring(element), tostring(converted),
+        tostring(offensiveMasterSorcererSpells[spellId] or 'unlisted'))
+
     if not sequence or not spellId or sequence <= lastSequence then
+        debugLog('dropped: stale sequence (%s <= %s)', tostring(sequence), tostring(lastSequence))
         return nil
     end
-    if not offensiveMasterSorcererSpells[spellId] or not allowedElements[element] then
+    if not offensiveMasterSorcererSpells[spellId] then
+        debugLog('dropped: spell %s is not in the recolour allow-list', tostring(spellId))
+        return nil
+    end
+    if not allowedElements[element] then
+        debugLog('dropped: element %s is not one of none/flam/vis/mort', tostring(element))
         return nil
     end
     return sequence, spellId, element, converted
@@ -42,12 +69,15 @@ local function onExtendedOpcode(protocol, opcode, buffer)
         return
     end
 
+    debugLog('opcode %d received', opcode)
+
     local sequence, spellId, element, converted = parse(buffer)
     if not sequence then
         return
     end
 
     lastSequence = sequence
+    debugLog('recolouring spell %d to %s (converted=%s)', spellId, element, tostring(converted))
     g_client.setMasterSorcererSpellVisual(sequence, spellId, element, converted)
 end
 

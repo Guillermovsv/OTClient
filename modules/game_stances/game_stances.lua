@@ -108,6 +108,10 @@ end
 
 function controllerStances:onInit()
     ProtocolGame.registerExtendedOpcode(STANCE_OPCODE, function(protocol, opcode, buffer)
+        -- TEMPORARY DIAGNOSTIC, paired with the one in game_stance_spell_visuals:
+        -- shows the stance channel arriving so a silent recolour channel can be
+        -- told apart from a dead connection. Remove with the other one.
+        g_logger.info('[STANCE] opcode ' .. tostring(opcode) .. ' payload ' .. tostring(buffer))
         local state, stanceId = buffer:match('^(%a+)|(.+)$')
         if buffer == 'inactive|' then
             state = 'inactive'
