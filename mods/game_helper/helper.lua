@@ -1062,7 +1062,7 @@ function buildStanceGrid()
 end
 
 -- Set to true to log what the stance grid holds and which buttons get lit.
-local DEBUG_STANCE_SELECTION = true
+local DEBUG_STANCE_SELECTION = false
 
 function refreshStanceSelection()
   -- Clear every button first, then light only the one stance each group holds.

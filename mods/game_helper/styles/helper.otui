@@ -43,6 +43,11 @@ RTCStanceSlot < UIWidget
   image-source: /images/ui/item
   image-border: 1
   focusable: false
+  // The base has to declare the border it is going to change. A $on block only
+  // overrides, so without these two lines turning the state off left the gold
+  // border applied and every stance ever clicked stayed highlighted.
+  border-width: 0
+  border-color: alpha
 
   UIWidget
     id: icon
@@ -149,6 +154,8 @@ RTCStepper < UIWidget
 RTCSpellPickerRow < Label
   font: verdana-11px-monochrome
   background-color: alpha
+  // declared so $focus has something to revert to when the row loses focus
+  color: #dfdfdf
   text-offset: 42 3
   focusable: true
   height: 36
