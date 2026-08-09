@@ -47,15 +47,28 @@ local stanceVisuals = {
     }
 }
 
+-- game_skills is a sandboxed module, so its helpers are NOT globals here: they
+-- live on the module table. Calling them as bare globals raised
+-- "attempt to call global 'setSkillColor' (a nil value)" on every stance
+-- activation, which meant stance colors and tooltips were never applied.
+local function skills()
+    return modules.game_skills
+end
+
 local function refreshBaseSkills()
     local player = g_game.getLocalPlayer()
     if not player then
         return
     end
 
-    onMagicLevelChange(player, player:getMagicLevel(), player:getMagicLevelPercent())
+    local sk = skills()
+    if not sk then
+        return
+    end
+
+    sk.onMagicLevelChange(player, player:getMagicLevel(), player:getMagicLevelPercent())
     for skill = Skill.Fist, Skill.Transcendence do
-        onSkillChange(player, skill, player:getSkillLevel(skill), player:getSkillLevelPercent(skill))
+        sk.onSkillChange(player, skill, player:getSkillLevel(skill), player:getSkillLevelPercent(skill))
     end
 end
 
@@ -66,13 +79,18 @@ local function applyVisuals()
         return
     end
 
+    local sk = skills()
+    if not sk then
+        return
+    end
+
     if visual.magic then
-        setSkillColor('magiclevel', '#008b00')
-        setSkillTooltip('magiclevel', visual.name .. ': ' .. visual.tooltip)
+        sk.setSkillColor('magiclevel', '#008b00')
+        sk.setSkillTooltip('magiclevel', visual.name .. ': ' .. visual.tooltip)
     end
     for _, skillId in ipairs(visual.skills or {}) do
-        setSkillColor(skillId, '#008b00')
-        setSkillTooltip(skillId, visual.name .. ': ' .. visual.tooltip)
+        sk.setSkillColor(skillId, '#008b00')
+        sk.setSkillTooltip(skillId, visual.name .. ': ' .. visual.tooltip)
     end
 end
 

@@ -4,5 +4,9 @@ Module
   author: DelyriumzOT
   sandboxed: true
   scripts: [ helper ]
+  # Load ourselves rather than relying on the client_mods load-later list:
+  # mods/.gitignore keeps that file user-local, so it is not shipped.
+  autoload: true
+  autoload-priority: 1000
   @onLoad: init()
   @onUnload: terminate()

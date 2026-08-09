@@ -119,7 +119,10 @@ end
 
 function refreshStatus()
   if not helperWindow then return end
-  local label = helperWindow:getChildById('statusLabel')
+  -- statusLabel is nested inside the window's panel, so the direct-children
+  -- lookup returns nil and every call errored out before the UI could show.
+  local label = helperWindow:recursiveGetChildById('statusLabel')
+  if not label then return end
   if config.enabled then
     label:setText('Helper Status: Enabled')
     label:setColor('#44cc44')
