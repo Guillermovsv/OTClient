@@ -419,6 +419,8 @@ MainWindow
       text: Target / Shooter: none
 
   // --------------------------------------------------------- healing panel
+  // Cloned from the reference: three columns over a rule, then two friend
+  // groups, each a name list beside two Sio rows.
   FlatPanel
     id: healingPanel
     anchors.top: tabBar.bottom
@@ -430,19 +432,18 @@ MainWindow
     margin-bottom: 6
     padding: 10
 
-    // --- spell healing
+    // ---- Spell Healing
     RTCColumnLabel
       id: spellHealTitle
       anchors.top: parent.top
       anchors.left: parent.left
       text: Spell Healing
 
-    // One compact row per heal: slot, percent, enable, info, spell words.
     RTCSpellSlot
       id: heal1Slot
       anchors.top: spellHealTitle.bottom
       anchors.left: parent.left
-      margin-top: 8
+      margin-top: 6
     RTCStepper
       id: heal1Hp
       anchors.verticalCenter: heal1Slot.verticalCenter
@@ -453,13 +454,13 @@ MainWindow
       anchors.verticalCenter: heal1Slot.verticalCenter
       anchors.left: heal1Hp.right
       margin-left: 6
-      tooltip: Cast these words when your health drops to the set percent.
+      tooltip: Cast this spell when your health drops to the set percent.
 
     RTCSpellSlot
       id: heal2Slot
       anchors.top: heal1Slot.bottom
       anchors.left: parent.left
-      margin-top: 8
+      margin-top: 6
     RTCStepper
       id: heal2Hp
       anchors.verticalCenter: heal2Slot.verticalCenter
@@ -470,13 +471,13 @@ MainWindow
       anchors.verticalCenter: heal2Slot.verticalCenter
       anchors.left: heal2Hp.right
       margin-left: 6
-      tooltip: Cast these words when your health drops to the set percent.
+      tooltip: Cast this spell when your health drops to the set percent.
 
     RTCSpellSlot
       id: heal3Slot
       anchors.top: heal2Slot.bottom
       anchors.left: parent.left
-      margin-top: 8
+      margin-top: 6
     RTCStepper
       id: heal3Hp
       anchors.verticalCenter: heal3Slot.verticalCenter
@@ -487,37 +488,29 @@ MainWindow
       anchors.verticalCenter: heal3Slot.verticalCenter
       anchors.left: heal3Hp.right
       margin-left: 6
-      tooltip: Cast these words when your health drops to the set percent.
+      tooltip: Cast this spell when your health drops to the set percent.
 
-    // --- potion healing
     VerticalSeparator
       id: healSepA
       anchors.top: spellHealTitle.top
       anchors.bottom: heal3Slot.bottom
       anchors.left: parent.left
-      margin-left: 152
+      margin-left: 136
 
-    VerticalSeparator
-      id: healSepB
-      anchors.top: spellHealTitle.top
-      anchors.bottom: heal3Slot.bottom
-      anchors.left: parent.left
-      margin-left: 324
-
+    // ---- Potion Healing
     RTCColumnLabel
       id: potHealTitle
       anchors.top: parent.top
       anchors.left: parent.left
-      margin-left: 172
+      margin-left: 156
       text: Potion Healing
 
-    // Rows 1-2 are health potions, row 3 is a mana potion.
     RTCSlot
       id: pot1Slot
       anchors.top: potHealTitle.bottom
       anchors.left: parent.left
-      margin-left: 172
-      margin-top: 8
+      margin-left: 156
+      margin-top: 6
     RTCStepper
       id: pot1Hp
       anchors.verticalCenter: pot1Slot.verticalCenter
@@ -528,14 +521,14 @@ MainWindow
       anchors.verticalCenter: pot1Slot.verticalCenter
       anchors.left: pot1Hp.right
       margin-left: 6
-      tooltip: Drag a health potion here. Used when health drops to the set percent.
+      tooltip: Drag or pick a potion. Red drinks on health, blue on mana - click to switch.
 
     RTCSlot
       id: pot2Slot
       anchors.top: pot1Slot.bottom
       anchors.left: parent.left
-      margin-left: 172
-      margin-top: 8
+      margin-left: 156
+      margin-top: 6
     RTCStepper
       id: pot2Hp
       anchors.verticalCenter: pot2Slot.verticalCenter
@@ -546,14 +539,14 @@ MainWindow
       anchors.verticalCenter: pot2Slot.verticalCenter
       anchors.left: pot2Hp.right
       margin-left: 6
-      tooltip: A second health potion, used when the first is not enough.
+      tooltip: Drag or pick a potion. Red drinks on health, blue on mana - click to switch.
 
     RTCSlot
       id: pot3Slot
       anchors.top: pot2Slot.bottom
       anchors.left: parent.left
-      margin-left: 172
-      margin-top: 8
+      margin-left: 156
+      margin-top: 6
     RTCStepper
       id: pot3Mana
       anchors.verticalCenter: pot3Slot.verticalCenter
@@ -564,92 +557,105 @@ MainWindow
       anchors.verticalCenter: pot3Slot.verticalCenter
       anchors.left: pot3Mana.right
       margin-left: 6
-      tooltip: Drag a mana potion here. Used when mana drops to the set percent.
+      tooltip: Drag or pick a potion. Red drinks on health, blue on mana - click to switch.
 
-    // --- mana training
+    VerticalSeparator
+      id: healSepB
+      anchors.top: spellHealTitle.top
+      anchors.bottom: heal3Slot.bottom
+      anchors.left: parent.left
+      margin-left: 292
+
+    // ---- Mana Training
     RTCColumnLabel
       id: manaTrainTitle
       anchors.top: parent.top
       anchors.left: parent.left
-      margin-left: 344
+      margin-left: 312
       text: Mana Training
 
     RTCSpellSlot
       id: manaTrainSlot
       anchors.top: manaTrainTitle.bottom
       anchors.left: parent.left
-      margin-left: 344
-      margin-top: 8
+      margin-left: 312
+      margin-top: 6
     RTCCheck
       id: manaTrainBox
       anchors.top: manaTrainSlot.top
       anchors.left: manaTrainSlot.right
       margin-left: 8
+      margin-top: 1
       width: 90
       text: Enable
-    RTCStepper
+    ComboBox
       id: manaTrainPct
       anchors.top: manaTrainBox.bottom
       anchors.left: manaTrainSlot.right
       margin-left: 8
-      margin-top: 2
+      margin-top: 3
+      width: 66
+      height: 20
     RTCInfo
       id: manaTrainInfo
       anchors.verticalCenter: manaTrainPct.verticalCenter
       anchors.left: manaTrainPct.right
-      margin-left: 4
+      margin-left: 6
       tooltip: Cast this spell in a protection zone while mana is at or above the set percent.
 
-    // --- exercise training
+    // ---- Exercise Training
     RTCColumnLabel
       id: exTrainTitle
       anchors.top: manaTrainSlot.bottom
       anchors.left: parent.left
-      margin-left: 344
-      margin-top: 14
+      margin-left: 312
+      margin-top: 10
       text: Exercise Training
 
     RTCSlot
       id: exTrainSlot
       anchors.top: exTrainTitle.bottom
       anchors.left: parent.left
-      margin-left: 344
-      margin-top: 8
+      margin-left: 312
+      margin-top: 6
     RTCCheck
       id: exTrainBox
       anchors.top: exTrainSlot.top
       anchors.left: exTrainSlot.right
       margin-left: 8
+      margin-top: 1
       width: 90
       text: Enable
-    RTCInfo
-      id: exTrainInfo
-      anchors.top: exTrainSlot.top
-      anchors.left: exTrainBox.right
-      margin-left: 2
-      tooltip: Drag an exercise weapon here. Used on a timer while in a protection zone.
+    ComboBox
+      id: exTrainPct
+      anchors.top: exTrainBox.bottom
+      anchors.left: exTrainSlot.right
+      margin-left: 8
+      margin-top: 3
+      width: 66
+      height: 20
+      enabled: false
 
-    // --- friend healing, laid out but not yet driven by the engine
     RTCSep
       id: healSep
-      anchors.top: heal3Slot.bottom
+      anchors.top: exTrainSlot.bottom
       anchors.left: parent.left
       anchors.right: parent.right
-      margin-top: 16
+      margin-top: 10
 
+    // ---- Sio friend group
     RTCColumnLabel
       id: friendTitle
       anchors.top: healSep.bottom
       anchors.left: parent.left
       margin-top: 8
       text: Select a Friend
-
     RTCInfo
       id: friendInfo
       anchors.verticalCenter: friendTitle.verticalCenter
       anchors.left: friendTitle.right
       margin-left: 6
-      tooltip: Party members in range. Pick one, then add it to a Sio row.
+      tooltip: Party members on screen. Pick one, then press + on a row.
 
     TextList
       id: friendList
@@ -659,209 +665,224 @@ MainWindow
       anchors.bottom: parent.bottom
       margin-top: 4
       margin-bottom: 2
-      width: 150
+      width: 116
       padding: 1
       focusable: false
-
     VerticalScrollBar
       id: friendScroll
       anchors.top: friendList.top
       anchors.bottom: friendList.bottom
       anchors.left: friendList.right
-      step: 14
+      step: 16
       pixels-scroll: true
 
     RTCColumnLabel
       id: sioTitle
       anchors.top: healSep.bottom
       anchors.left: parent.left
-      margin-left: 180
+      margin-left: 140
       margin-top: 8
       text: Sio Friend List
 
     RTCSmallButton
-      id: sioRefresh
-      anchors.verticalCenter: sioTitle.verticalCenter
-      anchors.left: sioTitle.right
-      margin-left: 8
-      width: 60
-      text: Refresh
-      tooltip: Rescan for party members in range
-      @onClick: modules.game_helper.refreshFriendList()
-
-    UIWidget
-      id: sio1Row
+      id: sio1Set
       anchors.top: sioTitle.bottom
+      anchors.left: parent.left
+      margin-left: 140
       margin-top: 6
+      width: 28
+      height: 40
+      text: +
+      tooltip: Bind the friend selected on the left to this row
+    RTCCheck
+      id: sio1Box
+      anchors.top: sio1Set.top
+      anchors.left: sio1Set.right
+      margin-left: 6
+      width: 108
+      text: Enable Sio
+    ComboBox
+      id: sio1Pct
+      anchors.top: sio1Box.bottom
+      anchors.left: sio1Set.right
+      margin-left: 6
+      margin-top: 2
+      width: 66
+      height: 20
+    RTCInfo
+      id: sio1Info
+      anchors.verticalCenter: sio1Pct.verticalCenter
+      anchors.left: sio1Pct.right
+      margin-left: 6
+      tooltip: Cast Heal Friend on this player when their health drops to the set percent.
+    RTCValueLabel
+      id: sio1Name
+      anchors.top: sio1Set.bottom
       anchors.left: parent.left
-      margin-left: 180
-      size: 300 20
+      margin-left: 140
+      margin-top: 2
+      text: -
 
-      RTCSmallButton
-        id: sio1Set
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        width: 20
-        text: +
-        tooltip: Put the friend selected on the left into this row
+    RTCSmallButton
+      id: sio2Set
+      anchors.top: sio1Name.bottom
+      anchors.left: parent.left
+      margin-left: 140
+      margin-top: 6
+      width: 28
+      height: 40
+      text: +
+      tooltip: Bind the friend selected on the left to this row
+    RTCCheck
+      id: sio2Box
+      anchors.top: sio2Set.top
+      anchors.left: sio2Set.right
+      margin-left: 6
+      width: 108
+      text: Enable Sio
+    ComboBox
+      id: sio2Pct
+      anchors.top: sio2Box.bottom
+      anchors.left: sio2Set.right
+      margin-left: 6
+      margin-top: 2
+      width: 66
+      height: 20
+    RTCInfo
+      id: sio2Info
+      anchors.verticalCenter: sio2Pct.verticalCenter
+      anchors.left: sio2Pct.right
+      margin-left: 6
+      tooltip: Cast Heal Friend on this player when their health drops to the set percent.
+    RTCValueLabel
+      id: sio2Name
+      anchors.top: sio2Set.bottom
+      anchors.left: parent.left
+      margin-left: 140
+      margin-top: 2
+      text: -
 
-      RTCCheck
-        id: sio1Box
-        anchors.left: sio1Set.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 6
-        width: 16
+    // ---- Gran Sio friend group
+    RTCColumnLabel
+      id: friend2Title
+      anchors.top: healSep.bottom
+      anchors.left: parent.left
+      margin-left: 300
+      margin-top: 8
+      text: Select a Friend
+    RTCInfo
+      id: friend2Info
+      anchors.verticalCenter: friend2Title.verticalCenter
+      anchors.left: friend2Title.right
+      margin-left: 6
+      tooltip: Party members on screen. Pick one, then press + on a row.
 
-      RTCValueLabel
-        id: sio1Name
-        anchors.left: sio1Box.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 4
-        width: 120
-        text: -
-
-      RTCStepper
-        id: sio1Pct
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 186
-
-      RTCInfo
-        id: sio1Info
-        anchors.left: sio1Pct.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 6
-        tooltip: Cast Heal Friend on this player when their health drops to the set percent.
-    UIWidget
-      id: sio2Row
-      anchors.top: sio1Row.bottom
+    TextList
+      id: friend2List
+      vertical-scrollbar: friend2Scroll
+      anchors.top: friend2Title.bottom
+      anchors.left: parent.left
+      anchors.bottom: parent.bottom
+      margin-left: 300
       margin-top: 4
+      margin-bottom: 2
+      width: 116
+      padding: 1
+      focusable: false
+    VerticalScrollBar
+      id: friend2Scroll
+      anchors.top: friend2List.top
+      anchors.bottom: friend2List.bottom
+      anchors.left: friend2List.right
+      step: 16
+      pixels-scroll: true
+
+    RTCColumnLabel
+      id: granSioTitle
+      anchors.top: healSep.bottom
       anchors.left: parent.left
-      margin-left: 180
-      size: 300 20
+      margin-left: 440
+      margin-top: 8
+      text: Gran Sio Friend List
 
-      RTCSmallButton
-        id: sio2Set
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        width: 20
-        text: +
-        tooltip: Put the friend selected on the left into this row
-
-      RTCCheck
-        id: sio2Box
-        anchors.left: sio2Set.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 6
-        width: 16
-
-      RTCValueLabel
-        id: sio2Name
-        anchors.left: sio2Box.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 4
-        width: 120
-        text: -
-
-      RTCStepper
-        id: sio2Pct
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 186
-
-      RTCInfo
-        id: sio2Info
-        anchors.left: sio2Pct.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 6
-        tooltip: Cast Heal Friend on this player when their health drops to the set percent.
-    UIWidget
-      id: sio3Row
-      anchors.top: sio2Row.bottom
-      margin-top: 4
+    RTCSmallButton
+      id: sio3Set
+      anchors.top: granSioTitle.bottom
       anchors.left: parent.left
-      margin-left: 180
-      size: 300 20
-
-      RTCSmallButton
-        id: sio3Set
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        width: 20
-        text: +
-        tooltip: Put the friend selected on the left into this row
-
-      RTCCheck
-        id: sio3Box
-        anchors.left: sio3Set.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 6
-        width: 16
-
-      RTCValueLabel
-        id: sio3Name
-        anchors.left: sio3Box.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 4
-        width: 120
-        text: -
-
-      RTCStepper
-        id: sio3Pct
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 186
-
-      RTCInfo
-        id: sio3Info
-        anchors.left: sio3Pct.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 6
-        tooltip: Cast Heal Friend on this player when their health drops to the set percent.
-    UIWidget
-      id: sio4Row
-      anchors.top: sio3Row.bottom
-      margin-top: 4
+      margin-left: 440
+      margin-top: 6
+      width: 28
+      height: 40
+      text: +
+      tooltip: Bind the friend selected on the left to this row
+    RTCCheck
+      id: sio3Box
+      anchors.top: sio3Set.top
+      anchors.left: sio3Set.right
+      margin-left: 6
+      width: 108
+      text: Enable
+    ComboBox
+      id: sio3Pct
+      anchors.top: sio3Box.bottom
+      anchors.left: sio3Set.right
+      margin-left: 6
+      margin-top: 2
+      width: 66
+      height: 20
+    RTCInfo
+      id: sio3Info
+      anchors.verticalCenter: sio3Pct.verticalCenter
+      anchors.left: sio3Pct.right
+      margin-left: 6
+      tooltip: Cast the stronger heal on this player when their health drops to the set percent.
+    RTCValueLabel
+      id: sio3Name
+      anchors.top: sio3Set.bottom
       anchors.left: parent.left
-      margin-left: 180
-      size: 300 20
+      margin-left: 440
+      margin-top: 2
+      text: -
 
-      RTCSmallButton
-        id: sio4Set
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        width: 20
-        text: +
-        tooltip: Put the friend selected on the left into this row
+    RTCSmallButton
+      id: sio4Set
+      anchors.top: sio3Name.bottom
+      anchors.left: parent.left
+      margin-left: 440
+      margin-top: 6
+      width: 28
+      height: 40
+      text: +
+      tooltip: Bind the friend selected on the left to this row
+    RTCCheck
+      id: sio4Box
+      anchors.top: sio4Set.top
+      anchors.left: sio4Set.right
+      margin-left: 6
+      width: 108
+      text: Enable
+    ComboBox
+      id: sio4Pct
+      anchors.top: sio4Box.bottom
+      anchors.left: sio4Set.right
+      margin-left: 6
+      margin-top: 2
+      width: 66
+      height: 20
+    RTCInfo
+      id: sio4Info
+      anchors.verticalCenter: sio4Pct.verticalCenter
+      anchors.left: sio4Pct.right
+      margin-left: 6
+      tooltip: Cast the stronger heal on this player when their health drops to the set percent.
+    RTCValueLabel
+      id: sio4Name
+      anchors.top: sio4Set.bottom
+      anchors.left: parent.left
+      margin-left: 440
+      margin-top: 2
+      text: -
 
-      RTCCheck
-        id: sio4Box
-        anchors.left: sio4Set.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 6
-        width: 16
-
-      RTCValueLabel
-        id: sio4Name
-        anchors.left: sio4Box.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 4
-        width: 120
-        text: -
-
-      RTCStepper
-        id: sio4Pct
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 186
-
-      RTCInfo
-        id: sio4Info
-        anchors.left: sio4Pct.right
-        anchors.verticalCenter: parent.verticalCenter
-        margin-left: 6
-        tooltip: Cast Heal Friend on this player when their health drops to the set percent.
-  // ---------------------------------------------------------- caster panel
   FlatPanel
     id: casterPanel
     anchors.top: tabBar.bottom

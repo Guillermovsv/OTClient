@@ -21,13 +21,25 @@ local SPELL_PROFILE = 'Default'
 -- are the castable stance spells as defined in the spell library.
 -- Per vocation this works out as: Knight 2, Paladin 2, Druid 2, Sorcerer 5
 -- (three Master stances plus the two Auras).
-local STANCE_NAMES = {
-  ['Protector'] = true, ['Blood Rage'] = true, ['Sharpshooter'] = true,
-  ['Divine Defiance'] = true, ['Elemental Synthesis'] = true,
-  ['Shared Conservation'] = true, ['Master of Flames'] = true,
-  ['Master of Thunder'] = true, ['Master of Decay'] = true,
-  ['Aura of Exposed Weakness'] = true, ['Aura of Sapped Strength'] = true,
+-- Two independent groups. Only one stance can be active per group, so most
+-- vocations hold a single stance while a sorcerer holds one elemental Master
+-- stance plus one Aura.
+local STANCE_GROUP = {
+  ['Protector']                = 'main',
+  ['Blood Rage']               = 'main',
+  ['Sharpshooter']             = 'main',
+  ['Divine Defiance']          = 'main',
+  ['Elemental Synthesis']      = 'main',
+  ['Shared Conservation']      = 'main',
+  ['Master of Flames']         = 'main',
+  ['Master of Thunder']        = 'main',
+  ['Master of Decay']          = 'main',
+  ['Aura of Exposed Weakness'] = 'aura',
+  ['Aura of Sapped Strength']  = 'aura',
 }
+
+local STANCE_NAMES = {}
+for name in pairs(STANCE_GROUP) do STANCE_NAMES[name] = true end
 
 -- Each slot only offers spells that make sense in it. Groups come from
 -- SpellGroups in gamelib/spells.lua: 1 Attack, 2 Healing, 3 Support,
@@ -64,8 +76,12 @@ local function defaultConfig()
     autoEat = false, foodItem = 3725,
     changeGold = false, autoReconnect = false,
     comboOrder = false, hotkeyPriority = false,
-    -- one stance may be selected, from any vocation
-    stance = { name = '', words = '', icon = 0 },
+    -- one stance per group: main is the elemental/class stance, aura is the
+    -- sorcerer-only second slot
+    stance = {
+      main = { name = '', words = '', icon = 0 },
+      aura = { name = '', words = '', icon = 0 },
+    },
     heals = {
       { enabled = false, words = '', hp = 80, icon = 0 },
       { enabled = false, words = '', hp = 60, icon = 0 },
@@ -258,6 +274,8 @@ function show()
   -- and raises no event, so the grid built there saw vocation 0 and could not
   -- filter. Rebuild on open, by which point the vocation is known.
   buildStanceGrid()
+  -- party membership changes constantly, so rescan every time it is opened
+  refreshFriendList()
 end
 
 function hide()
@@ -338,7 +356,15 @@ local function normalizeConfig(saved)
                          'helperKey', 'targetKey' }) do
     if saved[key] ~= nil then base[key] = saved[key] end
   end
-  base.stance = normalizeGroup(saved.stance, base.stance)
+  if type(saved.stance) == 'table' then
+    base.stance.main = normalizeGroup(saved.stance.main, base.stance.main)
+    base.stance.aura = normalizeGroup(saved.stance.aura, base.stance.aura)
+    -- a single-stance setting from before the groups existed
+    if saved.stance.name then
+      base.stance[STANCE_GROUP[saved.stance.name] or 'main'] =
+        normalizeGroup(saved.stance, base.stance.main)
+    end
+  end
 
   base.heals     = normalizeRows(saved.heals, base.heals)
   base.attacks   = normalizeRows(saved.attacks, base.attacks)
@@ -491,7 +517,7 @@ end
 function wireSteppers()
   if not helperWindow then return end
   local ids = { 'heal1Hp', 'heal2Hp', 'heal3Hp', 'pot1Hp', 'pot2Hp', 'pot3Mana',
-                'manaTrainPct', 'sio1Pct', 'sio2Pct', 'sio3Pct', 'sio4Pct', 'atk1Mana', 'atk2Mana', 'atk3Mana',
+                'atk1Mana', 'atk2Mana', 'atk3Mana',
                 'atk4Mana', 'atk5Mana' }
   for _, id in ipairs(ids) do
     local box = w(id)
@@ -615,8 +641,22 @@ local function getCombo(id, fallback)
   return (opt and tonumber(opt.data)) or fallback or 1
 end
 
+-- Percent dropdowns carry the percentage itself as the option data, unlike the
+-- creature/priority combos where the data is the row number.
+local function fillPercentCombo(id, from, to, step)
+  local combo = w(id)
+  if not combo or not combo.clearOptions then return end
+  combo:clearOptions()
+  for pct = from, to, step do
+    combo:addOption(pct .. '%', pct)
+  end
+end
+
 function wireCombos()
   if not helperWindow then return end
+  for i = 1, 4 do fillPercentCombo('sio' .. i .. 'Pct', 5, 100, 5) end
+  fillPercentCombo('manaTrainPct', 5, 100, 5)
+  fillPercentCombo('exTrainPct', 5, 100, 5)
   local counts = {}
   for i = 1, 8 do counts[i] = i .. '+' end
   for i = 1, 5 do
@@ -937,15 +977,17 @@ function buildStanceGrid()
 
       btn.stanceName = name
       btn.onClick = function()
-        if config.stance.name == name then
-          config.stance.name, config.stance.words, config.stance.icon = '', '', 0
+        -- picking within a group replaces that group's stance, so two of the
+        -- same kind can never be active. Only a sorcerer has both groups.
+        local slot = config.stance[STANCE_GROUP[name] or 'main']
+        if slot.name == name then
+          slot.name, slot.words, slot.icon = '', '', 0
         else
-          config.stance.name  = name
-          config.stance.words = info.words or ''
-          config.stance.icon  = tonumber(info.clientId) or 0
+          slot.name  = name
+          slot.words = info.words or ''
+          slot.icon  = tonumber(info.clientId) or 0
         end
         refreshStanceSelection()
-  refreshFriendRows()
         saveConfig()
       end
 
@@ -960,12 +1002,12 @@ function buildStanceGrid()
   grid:setWidth(math.min(shown, perRow) * cell + math.max(0, math.min(shown, perRow) - 1) * gap)
 
   refreshStanceSelection()
-  refreshFriendRows()
 end
 
 function refreshStanceSelection()
   for name, btn in pairs(stanceButtons) do
-    if btn.setOn then btn:setOn(config.stance.name == name) end
+    local slot = config.stance[STANCE_GROUP[name] or 'main']
+    if btn.setOn then btn:setOn(slot ~= nil and slot.name == name) end
   end
 end
 
@@ -1009,11 +1051,10 @@ end
 -- protocol only reports health for creatures on screen.
 local selectedFriend = nil
 
-function refreshFriendList()
-  local list = w('friendList')
+local function fillFriendList(listId)
+  local list = w(listId)
   if not list then return end
   list:destroyChildren()
-  selectedFriend = nil
 
   local player = g_game.getLocalPlayer()
   if not player then return end
@@ -1040,11 +1081,17 @@ function refreshFriendList()
   end
 end
 
+function refreshFriendList()
+  selectedFriend = nil
+  fillFriendList('friendList')
+  fillFriendList('friend2List')
+end
+
 function refreshFriendRows()
   for i, f in ipairs(config.friends) do
     setText('sio' .. i .. 'Name', (f.name ~= '' and f.name) or '-')
     setChecked('sio' .. i .. 'Box', f.enabled)
-    setStepper('sio' .. i .. 'Pct', f.pct or 70)
+    setCombo('sio' .. i .. 'Pct', f.pct or 70)
   end
 end
 
@@ -1102,7 +1149,7 @@ function populateUI()
   end
 
   setChecked('manaTrainBox', config.manaTrain.enabled)
-  setStepper('manaTrainPct', config.manaTrain.pct or 100)
+  setCombo('manaTrainPct', config.manaTrain.pct or 100)
   setSpellSlot('manaTrainSlot', config.manaTrain.icon, config.manaTrain.words)
 
   setChecked('exTrainBox', config.exTrain.enabled)
@@ -1157,7 +1204,7 @@ function saveFromUI()
   end
 
   config.manaTrain.enabled = isChecked('manaTrainBox')
-  config.manaTrain.pct     = getStepper('manaTrainPct', config.manaTrain.pct)
+  config.manaTrain.pct     = getCombo('manaTrainPct', config.manaTrain.pct)
 
   config.exTrain.enabled = isChecked('exTrainBox')
   config.exTrain.item    = getSlot('exTrainSlot', config.exTrain.item)
@@ -1170,7 +1217,7 @@ function saveFromUI()
   end
 
   for i, f in ipairs(config.friends) do
-    f.pct = getStepper('sio' .. i .. 'Pct', f.pct)
+    f.pct = getCombo('sio' .. i .. 'Pct', f.pct)
   end
 
   config.shooter    = isChecked('shooterBox')
@@ -1644,16 +1691,22 @@ function loop()
   -- 6) change gold
   if config.changeGold then runChangeGold(player, now) end
 
-  -- 6b) keep the chosen stance up. game_stances tracks what the server says is
-  -- active, so this only recasts when the stance is actually down.
-  if config.stance.words ~= '' and ready('stance', now, 5000) then
-    local active = modules.game_stances and modules.game_stances.getActiveStance
-      and modules.game_stances.getActiveStance()
-    local want = (config.stance.name or ''):lower():gsub(' ', '_')
-    if active ~= want then
-      g_game.talk(config.stance.words)
-      fire('stance', now)
+  -- 6b) keep the chosen stances up, one per group. game_stances only reports a
+  -- single active stance, so the main slot is checked against it and the aura
+  -- is simply refreshed on its own long timer.
+  local active = modules.game_stances and modules.game_stances.getActiveStance
+    and modules.game_stances.getActiveStance()
+  local main = config.stance.main
+  if main.words ~= '' and ready('stanceMain', now, 5000) then
+    if active ~= (main.name or ''):lower():gsub(' ', '_') then
+      g_game.talk(main.words)
+      fire('stanceMain', now)
     end
+  end
+  local aura = config.stance.aura
+  if aura.words ~= '' and ready('stanceAura', now, 30000) then
+    g_game.talk(aura.words)
+    fire('stanceAura', now)
   end
 
   -- 7) mana training: only while safe in a protection zone, above the chosen
