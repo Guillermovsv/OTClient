@@ -56,10 +56,12 @@ function init()
 
   -- live master toggle (no need to press Save just to enable/disable)
   local enableBox = helperWindow:recursiveGetChildById('enableBox')
-  enableBox.onCheckChange = function(_, checked)
-    config.enabled = checked
-    refreshStatus()
-    saveConfig()
+  if enableBox then
+    enableBox.onCheckChange = function(_, checked)
+      config.enabled = checked
+      refreshStatus()
+      saveConfig()
+    end
   end
 
   loopEvent = cycleEvent(loop, TICK_MS)
@@ -77,7 +79,8 @@ end
 function onGameStart()
   local player = g_game.getLocalPlayer()
   if player and helperWindow then
-    helperWindow:recursiveGetChildById('charName'):setText(player:getName())
+    local name = helperWindow:recursiveGetChildById('charName')
+    if name then name:setText(player:getName()) end
   end
   refreshStatus()
 end
@@ -85,10 +88,18 @@ end
 function selectTab(which)
   if not helperWindow then return end
   local healing = which == 'healing'
-  helperWindow:recursiveGetChildById('healingPanel'):setVisible(healing)
-  helperWindow:recursiveGetChildById('casterPanel'):setVisible(not healing)
-  helperWindow:recursiveGetChildById('healingTabBtn'):setOn(healing)
-  helperWindow:recursiveGetChildById('casterTabBtn'):setOn(not healing)
+  local function vis(id, on)
+    local x = helperWindow:recursiveGetChildById(id)
+    if x then x:setVisible(on) end
+  end
+  local function on(id, state)
+    local x = helperWindow:recursiveGetChildById(id)
+    if x and x.setOn then x:setOn(state) end
+  end
+  vis('healingPanel', healing)
+  vis('casterPanel', not healing)
+  on('healingTabBtn', healing)
+  on('casterTabBtn', not healing)
 end
 
 function onGameEnd()
@@ -135,16 +146,59 @@ end
 -- ---------------------------------------------------------------------------
 -- persistence
 -- ---------------------------------------------------------------------------
-function loadConfig()
-  local saved = g_settings.getNode(SETTINGS_KEY)
-  if type(saved) == 'table' then
-    -- merge saved over defaults so new fields survive upgrades
-    local base = defaultConfig()
-    table.merge(base, saved)
-    config = base
-  else
-    config = defaultConfig()
+-- g_settings round-trips tables through a string-keyed representation, so a
+-- saved array comes back as { ["1"] = {...} } and config.heals[1] is nil. That
+-- crashed populateUI on the next start ("attempt to index a nil value") and
+-- took the whole module down with it. Rebuild every row list with real numeric
+-- indices, padded to the length the UI expects and merged over the defaults.
+local function normalizeRows(saved, defaults)
+  local out = {}
+  for i = 1, #defaults do
+    local row = table.copy(defaults[i])
+    local savedRow = nil
+    if type(saved) == 'table' then
+      savedRow = saved[i] or saved[tostring(i)]
+    end
+    if type(savedRow) == 'table' then
+      for k, v in pairs(savedRow) do
+        if row[k] ~= nil then row[k] = v end
+      end
+    end
+    out[i] = row
   end
+  return out
+end
+
+local function normalizeGroup(saved, defaults)
+  local out = table.copy(defaults)
+  if type(saved) == 'table' then
+    for k, v in pairs(saved) do
+      if out[k] ~= nil then out[k] = v end
+    end
+  end
+  return out
+end
+
+function loadConfig()
+  local base = defaultConfig()
+  local saved = g_settings.getNode(SETTINGS_KEY)
+  if type(saved) ~= 'table' then
+    config = base
+    return
+  end
+
+  for _, key in ipairs({ 'enabled', 'autoHaste', 'hastePz', 'hasteWords',
+                         'autoEat', 'foodItem', 'shooter', 'autoTarget' }) do
+    if saved[key] ~= nil then base[key] = saved[key] end
+  end
+
+  base.heals   = normalizeRows(saved.heals, base.heals)
+  base.attacks = normalizeRows(saved.attacks, base.attacks)
+  base.potHp   = normalizeGroup(saved.potHp, base.potHp)
+  base.potMana = normalizeGroup(saved.potMana, base.potMana)
+  base.rune    = normalizeGroup(saved.rune, base.rune)
+
+  config = base
 end
 
 function saveConfig()
@@ -155,84 +209,114 @@ end
 -- ---------------------------------------------------------------------------
 -- UI <-> config
 -- ---------------------------------------------------------------------------
-local function w(id) return helperWindow:recursiveGetChildById(id) end
+local function w(id)
+  if not helperWindow then return nil end
+  return helperWindow:recursiveGetChildById(id)
+end
+
+-- Every accessor tolerates a missing widget. A single id typo used to raise
+-- inside init(), and a module that throws while loading is removed from
+-- package.loaded -- leaving the already-created window on screen with
+-- modules.game_helper nil, so every button then failed too.
+local function setText(id, v)
+  local x = w(id); if x then x:setText(tostring(v ~= nil and v or '')) end
+end
+local function setValue(id, v)
+  local x = w(id); if x and x.setValue then x:setValue(tonumber(v) or 0) end
+end
+local function setChecked(id, v)
+  local x = w(id); if x and x.setChecked then x:setChecked(v and true or false) end
+end
+local function getText(id)
+  local x = w(id); return x and x:getText() or ''
+end
+local function getValue(id, fallback)
+  local x = w(id)
+  if x and x.getValue then return x:getValue() end
+  return fallback or 0
+end
+local function isChecked(id)
+  local x = w(id); return (x and x.isChecked and x:isChecked()) and true or false
+end
 
 function populateUI()
   if not helperWindow then return end
 
-  w('enableBox'):setChecked(config.enabled)
-  w('autoHasteBox'):setChecked(config.autoHaste)
-  w('hastePzBox'):setChecked(config.hastePz)
-  w('hasteWords'):setText(config.hasteWords or '')
-  w('autoEatBox'):setChecked(config.autoEat)
-  w('foodItem'):setText(tostring(config.foodItem or 0))
+  setChecked('enableBox', config.enabled)
+  setChecked('autoHasteBox', config.autoHaste)
+  setChecked('hastePzBox', config.hastePz)
+  setText('hasteWords', config.hasteWords or '')
+  setChecked('autoEatBox', config.autoEat)
+  setText('foodItem', config.foodItem or 0)
 
-  for i = 1, 3 do
-    w('heal' .. i .. 'Words'):setText(config.heals[i].words or '')
-    w('heal' .. i .. 'Hp'):setValue(config.heals[i].hp or 0)
-    w('heal' .. i .. 'Box'):setChecked(config.heals[i].enabled)
+  for i = 1, #config.heals do
+    local h = config.heals[i]
+    setText('heal' .. i .. 'Words', h.words or '')
+    setValue('heal' .. i .. 'Hp', h.hp or 0)
+    setChecked('heal' .. i .. 'Box', h.enabled)
   end
 
-  w('pot1Item'):setText(tostring(config.potHp.item or 0))
-  w('pot1Hp'):setValue(config.potHp.hp or 0)
-  w('pot1Box'):setChecked(config.potHp.enabled)
-  w('pot2Item'):setText(tostring(config.potMana.item or 0))
-  w('pot2Mana'):setValue(config.potMana.mana or 0)
-  w('pot2Box'):setChecked(config.potMana.enabled)
+  setText('pot1Item', config.potHp.item or 0)
+  setValue('pot1Hp', config.potHp.hp or 0)
+  setChecked('pot1Box', config.potHp.enabled)
+  setText('pot2Item', config.potMana.item or 0)
+  setValue('pot2Mana', config.potMana.mana or 0)
+  setChecked('pot2Box', config.potMana.enabled)
 
-  for i = 1, 5 do
-    w('atk' .. i .. 'Words'):setText(config.attacks[i].words or '')
-    w('atk' .. i .. 'Mana'):setValue(config.attacks[i].mana or 0)
-    w('atk' .. i .. 'Mobs'):setValue(config.attacks[i].mobs or 0)
-    w('atk' .. i .. 'Box'):setChecked(config.attacks[i].enabled)
+  for i = 1, #config.attacks do
+    local a = config.attacks[i]
+    setText('atk' .. i .. 'Words', a.words or '')
+    setValue('atk' .. i .. 'Mana', a.mana or 0)
+    setValue('atk' .. i .. 'Mobs', a.mobs or 0)
+    setChecked('atk' .. i .. 'Box', a.enabled)
   end
 
-  w('shooterBox'):setChecked(config.shooter)
-  w('autoTargetBox'):setChecked(config.autoTarget)
-  w('runeItem'):setText(tostring(config.rune.item or 0))
-  w('runeBox'):setChecked(config.rune.enabled)
+  setChecked('shooterBox', config.shooter)
+  setChecked('autoTargetBox', config.autoTarget)
+  setText('runeItem', config.rune.item or 0)
+  setChecked('runeBox', config.rune.enabled)
 
   refreshStatus()
 end
 
 local function num(id)
-  return tonumber(w(id):getText()) or 0
+  return tonumber(getText(id)) or 0
 end
 
 function saveFromUI()
   if not helperWindow then return end
 
-  config.enabled   = w('enableBox'):isChecked()
-  config.autoHaste = w('autoHasteBox'):isChecked()
-  config.hastePz   = w('hastePzBox'):isChecked()
-  config.hasteWords = w('hasteWords'):getText()
-  config.autoEat   = w('autoEatBox'):isChecked()
+  config.enabled   = isChecked('enableBox')
+  config.autoHaste = isChecked('autoHasteBox')
+  config.hastePz   = isChecked('hastePzBox')
+  config.hasteWords = getText('hasteWords')
+  config.autoEat   = isChecked('autoEatBox')
   config.foodItem  = num('foodItem')
 
-  for i = 1, 3 do
-    config.heals[i].words   = w('heal' .. i .. 'Words'):getText()
-    config.heals[i].hp      = w('heal' .. i .. 'Hp'):getValue()
-    config.heals[i].enabled = w('heal' .. i .. 'Box'):isChecked()
+  for i = 1, #config.heals do
+    config.heals[i].words   = getText('heal' .. i .. 'Words')
+    config.heals[i].hp      = getValue('heal' .. i .. 'Hp', config.heals[i].hp)
+    config.heals[i].enabled = isChecked('heal' .. i .. 'Box')
   end
 
   config.potHp.item    = num('pot1Item')
-  config.potHp.hp      = w('pot1Hp'):getValue()
-  config.potHp.enabled = w('pot1Box'):isChecked()
+  config.potHp.hp      = getValue('pot1Hp', config.potHp.hp)
+  config.potHp.enabled = isChecked('pot1Box')
   config.potMana.item    = num('pot2Item')
-  config.potMana.mana    = w('pot2Mana'):getValue()
-  config.potMana.enabled = w('pot2Box'):isChecked()
+  config.potMana.mana    = getValue('pot2Mana', config.potMana.mana)
+  config.potMana.enabled = isChecked('pot2Box')
 
-  for i = 1, 5 do
-    config.attacks[i].words   = w('atk' .. i .. 'Words'):getText()
-    config.attacks[i].mana    = w('atk' .. i .. 'Mana'):getValue()
-    config.attacks[i].mobs    = w('atk' .. i .. 'Mobs'):getValue()
-    config.attacks[i].enabled = w('atk' .. i .. 'Box'):isChecked()
+  for i = 1, #config.attacks do
+    config.attacks[i].words   = getText('atk' .. i .. 'Words')
+    config.attacks[i].mana    = getValue('atk' .. i .. 'Mana', config.attacks[i].mana)
+    config.attacks[i].mobs    = getValue('atk' .. i .. 'Mobs', config.attacks[i].mobs)
+    config.attacks[i].enabled = isChecked('atk' .. i .. 'Box')
   end
 
-  config.shooter    = w('shooterBox'):isChecked()
-  config.autoTarget = w('autoTargetBox'):isChecked()
+  config.shooter    = isChecked('shooterBox')
+  config.autoTarget = isChecked('autoTargetBox')
   config.rune.item    = num('runeItem')
-  config.rune.enabled = w('runeBox'):isChecked()
+  config.rune.enabled = isChecked('runeBox')
 
   saveConfig()
   refreshStatus()
