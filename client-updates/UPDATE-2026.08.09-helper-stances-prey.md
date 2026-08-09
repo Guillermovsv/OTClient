@@ -132,13 +132,26 @@ server refuses.
 
 ## Inventory slots
 
-`UIItem::setItem()` only refreshed the widget's cached item id when handed a
-real item, so `setItem(nil)` dropped the sprite but left `m_itemId` pointing at
-whatever used to be in the slot. `drawSelf` forces `m_item` back to `m_itemId`,
-so a stale id could redraw equipment that had been taken off. The inventory now
-clears with `clearItem()`, which resets both and needs no rebuild;
-`src/client/uiitem.cpp` is corrected as well and applies to every other UIItem
-once the client is rebuilt.
+Unequipping left the item drawn in the slot it came from while it also appeared
+wherever it had been moved to. Only equipped items were affected; container to
+container and container to ground were always correct. Three things were wrong,
+and the fix is the combination:
+
+- `UIItem::setItem()` only refreshed the widget's cached item id when handed a
+  real item, so `setItem(nil)` dropped the sprite but left `m_itemId` pointing
+  at whatever used to be in the slot. `drawSelf` forces `m_item` back to
+  `m_itemId`, so a stale id could redraw equipment that had been taken off. The
+  inventory now clears with `clearItem()`, which resets both and needs no
+  rebuild. `src/client/uiitem.cpp` is corrected as well, which fixes the same
+  bug for every other UIItem in the interface once the client is rebuilt.
+- `inventoryEvent` trusted the item passed with the signal. It now reads the
+  slot back from the local player, which is authoritative because
+  `LocalPlayer::setInventoryItem` stores the new value before it signals.
+- `EventController:execute()` calls every registered handler with no arguments
+  when given no name, so the handler was being invoked with a nil slot. It
+  returns early on that now instead of querying the player for slot nil.
+
+Confirmed fixed in game.
 
 ## Diagnostics
 

@@ -147,7 +147,7 @@ end
 
 -- Set to true to log every inventory slot change. Tells apart "the server
 -- never sent the clear" from "the client got it and did not redraw".
-local DEBUG_INVENTORY = true
+local DEBUG_INVENTORY = false
 
 local function inventoryEvent(player, slot, item, oldItem)
     -- EventController:execute() with no name calls every handler with no
