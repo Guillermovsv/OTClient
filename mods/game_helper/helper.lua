@@ -167,10 +167,11 @@ function updatePreview(player)
   local preview = helperWindow:recursiveGetChildById('charPreview')
   if not preview or not preview.setCreature then return end
 
+  -- A momentary outfit of type 0 (invisibility, a mount swap, a stat push that
+  -- reports nothing) must not wipe the preview: keep the last good one. Only
+  -- logging out clears it.
   local outfit = player and player:getOutfit()
   if not outfit or (tonumber(outfit.type) or 0) <= 0 then
-    preview:setCreature(nil)
-    previewCreature = nil
     return
   end
 
@@ -493,10 +494,22 @@ end
 
 -- Slots holding an item: drag one in, or left click to pick with the crosshair,
 -- right click to clear.
--- Item slots accept only what belongs in them. Runes are matched against
--- SpellRunesData, which is keyed by the rune's item id.
+-- Item slots accept only what belongs in them. Classification comes from the
+-- item's own market data (MarketCategory in gamelib/market.lua), which is what
+-- the action bar uses too, rather than guessing from the usable flags -- those
+-- are not set the way you would expect on potions.
+local function itemMarket(itemId)
+  local ok, probe = pcall(Item.create, itemId)
+  if not ok or not probe or not probe.getMarketData then return nil end
+  local ok2, data = pcall(probe.getMarketData, probe)
+  if not ok2 then return nil end
+  return data
+end
+
 local function isRuneItem(itemId)
-  return SpellRunesData ~= nil and SpellRunesData[itemId] ~= nil
+  if SpellRunesData and SpellRunesData[itemId] then return true end
+  local data = itemMarket(itemId)
+  return data ~= nil and data.category == MarketCategory.Runes
 end
 
 local function acceptRune(itemId)
@@ -504,25 +517,29 @@ local function acceptRune(itemId)
   return false, tr('That is not a rune.')
 end
 
-local function acceptConsumable(itemId)
-  if isRuneItem(itemId) then
-    return false, tr('That is a rune, not a usable item for this slot.')
-  end
-  -- creating a probe item can throw on an unknown id, so never let it escape
-  local ok, probe = pcall(Item.create, itemId)
-  if ok and probe and probe.isUsable and not probe:isUsable() and not probe:isMultiUse() then
-    return false, tr('That item cannot be used.')
-  end
-  return true
+local function acceptPotion(itemId)
+  local data = itemMarket(itemId)
+  -- unknown market data must not block a legitimate item
+  if not data or not data.category then return true end
+  if data.category == MarketCategory.Potions then return true end
+  return false, tr('Only potions belong in a potion slot.')
+end
+
+local function acceptExercise(itemId)
+  local data = itemMarket(itemId)
+  if not data then return true end
+  local name = (data.name or ''):lower()
+  if name:find('exercise') or name:find('training') then return true end
+  return false, tr('Only an exercise weapon belongs here.')
 end
 
 local ITEM_SLOTS = {
-  { slot = 'pot1Slot',    accept = acceptConsumable },
-  { slot = 'pot2Slot',    accept = acceptConsumable },
-  { slot = 'pot3Slot',    accept = acceptConsumable },
+  { slot = 'pot1Slot',    accept = acceptPotion },
+  { slot = 'pot2Slot',    accept = acceptPotion },
+  { slot = 'pot3Slot',    accept = acceptPotion },
   { slot = 'runeSlot',    accept = acceptRune },
   { slot = 'rune2Slot',   accept = acceptRune },
-  { slot = 'exTrainSlot', accept = acceptConsumable },
+  { slot = 'exTrainSlot', accept = acceptExercise },
 }
 
 local ITEM_SLOT_IDS = {}
@@ -532,26 +549,26 @@ for _, s in ipairs(ITEM_SLOTS) do table.insert(ITEM_SLOT_IDS, s.slot) end
 -- Each maps to the config field the chosen spell is written into.
 local SPELL_SLOTS = {
   { slot = 'hasteSlot',     get = function() return config end,           words = 'hasteWords',
-    filter = FILTER_HASTE,  wordsField = 'hasteWords' },
+    filter = FILTER_HASTE },
   { slot = 'heal1Slot',     get = function() return config.heals[1] end,   words = 'words',
-    filter = FILTER_HEAL,   wordsField = 'heal1Words' },
+    filter = FILTER_HEAL },
   { slot = 'heal2Slot',     get = function() return config.heals[2] end,   words = 'words',
-    filter = FILTER_HEAL,   wordsField = 'heal2Words' },
+    filter = FILTER_HEAL },
   { slot = 'heal3Slot',     get = function() return config.heals[3] end,   words = 'words',
-    filter = FILTER_HEAL,   wordsField = 'heal3Words' },
+    filter = FILTER_HEAL },
   -- training just needs something castable, so it is not narrowed
   { slot = 'manaTrainSlot', get = function() return config.manaTrain end,  words = 'words',
-    wordsField = 'manaTrainWords' },
+  },
   { slot = 'atk1Slot',      get = function() return config.attacks[1] end, words = 'words',
-    filter = FILTER_ATTACK, wordsField = 'atk1Words' },
+    filter = FILTER_ATTACK },
   { slot = 'atk2Slot',      get = function() return config.attacks[2] end, words = 'words',
-    filter = FILTER_ATTACK, wordsField = 'atk2Words' },
+    filter = FILTER_ATTACK },
   { slot = 'atk3Slot',      get = function() return config.attacks[3] end, words = 'words',
-    filter = FILTER_ATTACK, wordsField = 'atk3Words' },
+    filter = FILTER_ATTACK },
   { slot = 'atk4Slot',      get = function() return config.attacks[4] end, words = 'words',
-    filter = FILTER_ATTACK, wordsField = 'atk4Words' },
+    filter = FILTER_ATTACK },
   { slot = 'atk5Slot',      get = function() return config.attacks[5] end, words = 'words',
-    filter = FILTER_ATTACK, wordsField = 'atk5Words' },
+    filter = FILTER_ATTACK },
 }
 
 local SLOT_IDS = ITEM_SLOT_IDS
@@ -902,7 +919,6 @@ function populateUI()
   setChecked('enableBox', config.enabled)
   setChecked('autoHasteBox', config.autoHaste)
   setChecked('hastePzBox', config.hastePz)
-  setText('hasteWords', config.hasteWords or '')
   setSpellSlot('hasteSlot', config.icon, config.hasteWords)
   setChecked('autoEatBox', config.autoEat)
   setText('foodItem', config.foodItem or 0)
@@ -915,7 +931,6 @@ function populateUI()
 
   for i = 1, #config.heals do
     local h = config.heals[i]
-    setText('heal' .. i .. 'Words', h.words or '')
     setStepper('heal' .. i .. 'Hp', h.hp or 0)
     setChecked('heal' .. i .. 'Box', h.enabled)
     setSpellSlot('heal' .. i .. 'Slot', h.icon, h.words)
@@ -930,7 +945,6 @@ function populateUI()
   end
 
   setChecked('manaTrainBox', config.manaTrain.enabled)
-  setText('manaTrainWords', config.manaTrain.words or '')
   setStepper('manaTrainPct', config.manaTrain.pct or 100)
   setSpellSlot('manaTrainSlot', config.manaTrain.icon, config.manaTrain.words)
 
@@ -939,7 +953,6 @@ function populateUI()
 
   for i = 1, #config.attacks do
     local a = config.attacks[i]
-    setText('atk' .. i .. 'Words', a.words or '')
     setStepper('atk' .. i .. 'Mana', a.mana or 0)
     setCombo('atk' .. i .. 'Mobs', a.mobs or 1)
     setCombo('atk' .. i .. 'Prio', a.prio or i)
@@ -970,7 +983,6 @@ function saveFromUI()
   config.enabled   = isChecked('enableBox')
   config.autoHaste = isChecked('autoHasteBox')
   config.hastePz   = isChecked('hastePzBox')
-  config.hasteWords = getText('hasteWords')
   config.autoEat   = isChecked('autoEatBox')
   config.foodItem  = num('foodItem')
   config.changeGold = isChecked('changeGoldBox')
@@ -979,7 +991,6 @@ function saveFromUI()
   config.hotkeyPriority = isChecked('hotkeyPriorityBox')
 
   for i = 1, #config.heals do
-    config.heals[i].words   = getText('heal' .. i .. 'Words')
     config.heals[i].hp      = getStepper('heal' .. i .. 'Hp', config.heals[i].hp)
     config.heals[i].enabled = isChecked('heal' .. i .. 'Box')
   end
@@ -992,14 +1003,12 @@ function saveFromUI()
   end
 
   config.manaTrain.enabled = isChecked('manaTrainBox')
-  config.manaTrain.words   = getText('manaTrainWords')
   config.manaTrain.pct     = getStepper('manaTrainPct', config.manaTrain.pct)
 
   config.exTrain.enabled = isChecked('exTrainBox')
   config.exTrain.item    = getSlot('exTrainSlot', config.exTrain.item)
 
   for i = 1, #config.attacks do
-    config.attacks[i].words   = getText('atk' .. i .. 'Words')
     config.attacks[i].mana    = getStepper('atk' .. i .. 'Mana', config.attacks[i].mana)
     config.attacks[i].mobs    = getCombo('atk' .. i .. 'Mobs', config.attacks[i].mobs)
     config.attacks[i].prio    = getCombo('atk' .. i .. 'Prio', config.attacks[i].prio)
@@ -1379,7 +1388,10 @@ function loop()
     local blocked = isMana and false or (healed or drankHealth)
     if p.enabled and p.item > 0 and not blocked and level <= p.pct
         and ready('pot' .. i, now, 1000) then
-      g_game.useInventoryItem(p.item)
+      -- Potions are multi-use: they have to be used ON the drinker. Plain
+      -- useInventoryItem() has no target and the server answers
+      -- "You cannot use this object."
+      g_game.useInventoryItemWith(p.item, player)
       fire('pot' .. i, now)
       stats.potions = stats.potions + 1
       if not isMana then drankHealth = true end

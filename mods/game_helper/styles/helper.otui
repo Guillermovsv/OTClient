@@ -80,9 +80,11 @@ RTCInfo < Button
 RTCSep < HorizontalSeparator
   height: 2
 
-// A percent stepper: [<] [ nn% ] [>]  (arrows are deliberately narrow)
+// A percent stepper: [<] [ nn ] % [>]
+// The % is its own label rather than part of the spin box text, which only
+// accepts digits.
 RTCStepper < UIWidget
-  size: 68 20
+  size: 76 20
   Button
     id: dec
     text: <
@@ -92,22 +94,36 @@ RTCStepper < UIWidget
     anchors.verticalCenter: parent.verticalCenter
   SpinBox
     id: spin
-    width: 48
+    width: 38
     height: 18
+    text-align: right
+    padding-right: 2
     anchors.left: dec.right
     anchors.verticalCenter: parent.verticalCenter
-    margin-left: 1
+    margin-left: 2
     // UISpinBox.create() defaults to maximum 1 and setValue() clamps, so a
     // percent written before the range is widened silently becomes 1.
     minimum: 0
     maximum: 100
     buttons: false
+  Label
+    id: pct
+    text: '%'
+    width: 10
+    height: 18
+    text-align: left
+    font: verdana-11px-rounded
+    color: #c8c8c8
+    anchors.left: spin.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 1
+    phantom: true
   Button
     id: inc
     text: >
     width: 8
     height: 18
-    anchors.left: spin.right
+    anchors.left: pct.right
     anchors.verticalCenter: parent.verticalCenter
     margin-left: 1
 
@@ -434,13 +450,6 @@ MainWindow
       anchors.left: heal1Box.right
       margin-left: 2
       tooltip: Cast these words when your health drops to the set percent.
-    TextEdit
-      id: heal1Words
-      anchors.verticalCenter: heal1Slot.verticalCenter
-      anchors.left: heal1Info.right
-      margin-left: 6
-      width: 116
-      height: 18
 
     RTCSpellSlot
       id: heal2Slot
@@ -464,13 +473,6 @@ MainWindow
       anchors.left: heal2Box.right
       margin-left: 2
       tooltip: Cast these words when your health drops to the set percent.
-    TextEdit
-      id: heal2Words
-      anchors.verticalCenter: heal2Slot.verticalCenter
-      anchors.left: heal2Info.right
-      margin-left: 6
-      width: 116
-      height: 18
 
     RTCSpellSlot
       id: heal3Slot
@@ -494,20 +496,26 @@ MainWindow
       anchors.left: heal3Box.right
       margin-left: 2
       tooltip: Cast these words when your health drops to the set percent.
-    TextEdit
-      id: heal3Words
-      anchors.verticalCenter: heal3Slot.verticalCenter
-      anchors.left: heal3Info.right
-      margin-left: 6
-      width: 116
-      height: 18
 
     // --- potion healing
-    RTCColumnLabel
-      id: potHealTitle
-      anchors.top: parent.top
+    VerticalSeparator
+      id: healSepA
+      anchors.top: spellHealTitle.top
+      anchors.bottom: heal3Slot.bottom
       anchors.left: parent.left
-      margin-left: 286
+      margin-left: 170
+
+    VerticalSeparator
+      id: healSepB
+      anchors.top: spellHealTitle.top
+      anchors.bottom: heal3Slot.bottom
+      anchors.left: parent.left
+      margin-left: 360
+
+    RTCColumnLabel
+      id: potHealTitle      anchors.top: parent.top
+      anchors.left: parent.left
+      margin-left: 190
       text: Potion Healing
 
     // Rows 1-2 are health potions, row 3 is a mana potion.
@@ -515,7 +523,7 @@ MainWindow
       id: pot1Slot
       anchors.top: potHealTitle.bottom
       anchors.left: parent.left
-      margin-left: 286
+      margin-left: 190
       margin-top: 8
     RTCStepper
       id: pot1Hp
@@ -539,7 +547,7 @@ MainWindow
       id: pot2Slot
       anchors.top: pot1Slot.bottom
       anchors.left: parent.left
-      margin-left: 286
+      margin-left: 190
       margin-top: 8
     RTCStepper
       id: pot2Hp
@@ -563,7 +571,7 @@ MainWindow
       id: pot3Slot
       anchors.top: pot2Slot.bottom
       anchors.left: parent.left
-      margin-left: 286
+      margin-left: 190
       margin-top: 8
     RTCStepper
       id: pot3Mana
@@ -588,14 +596,14 @@ MainWindow
       id: manaTrainTitle
       anchors.top: parent.top
       anchors.left: parent.left
-      margin-left: 452
+      margin-left: 380
       text: Mana Training
 
     RTCSpellSlot
       id: manaTrainSlot
       anchors.top: manaTrainTitle.bottom
       anchors.left: parent.left
-      margin-left: 452
+      margin-left: 380
       margin-top: 8
     RTCCheck
       id: manaTrainBox
@@ -616,21 +624,13 @@ MainWindow
       anchors.left: manaTrainPct.right
       margin-left: 4
       tooltip: Cast this spell in a protection zone while mana is at or above the set percent.
-    TextEdit
-      id: manaTrainWords
-      anchors.top: manaTrainSlot.bottom
-      anchors.left: parent.left
-      margin-left: 452
-      margin-top: 6
-      width: 178
-      height: 18
 
     // --- exercise training
     RTCColumnLabel
       id: exTrainTitle
       anchors.top: manaTrainWords.bottom
       anchors.left: parent.left
-      margin-left: 452
+      margin-left: 380
       margin-top: 14
       text: Exercise Training
 
@@ -638,7 +638,7 @@ MainWindow
       id: exTrainSlot
       anchors.top: exTrainTitle.bottom
       anchors.left: parent.left
-      margin-left: 452
+      margin-left: 380
       margin-top: 8
     RTCCheck
       id: exTrainBox
@@ -818,13 +818,6 @@ MainWindow
       anchors.left: parent.left
       margin-left: 288
       width: 16
-    TextEdit
-      id: atk1Words
-      anchors.verticalCenter: atk1Slot.verticalCenter
-      anchors.left: parent.left
-      margin-left: 310
-      width: 108
-      height: 18
 
     RTCSpellSlot
       id: atk2Slot
@@ -856,13 +849,6 @@ MainWindow
       anchors.left: parent.left
       margin-left: 288
       width: 16
-    TextEdit
-      id: atk2Words
-      anchors.verticalCenter: atk2Slot.verticalCenter
-      anchors.left: parent.left
-      margin-left: 310
-      width: 108
-      height: 18
 
     RTCSpellSlot
       id: atk3Slot
@@ -894,13 +880,6 @@ MainWindow
       anchors.left: parent.left
       margin-left: 288
       width: 16
-    TextEdit
-      id: atk3Words
-      anchors.verticalCenter: atk3Slot.verticalCenter
-      anchors.left: parent.left
-      margin-left: 310
-      width: 108
-      height: 18
 
     RTCSpellSlot
       id: atk4Slot
@@ -932,13 +911,6 @@ MainWindow
       anchors.left: parent.left
       margin-left: 288
       width: 16
-    TextEdit
-      id: atk4Words
-      anchors.verticalCenter: atk4Slot.verticalCenter
-      anchors.left: parent.left
-      margin-left: 310
-      width: 108
-      height: 18
 
     RTCSpellSlot
       id: atk5Slot
@@ -970,18 +942,17 @@ MainWindow
       anchors.left: parent.left
       margin-left: 288
       width: 16
-    TextEdit
-      id: atk5Words
-      anchors.verticalCenter: atk5Slot.verticalCenter
-      anchors.left: parent.left
-      margin-left: 310
-      width: 108
-      height: 18
 
     // --- stance (right column)
+    VerticalSeparator
+      id: casterSep
+      anchors.top: colSpell.top
+      anchors.bottom: atk5Slot.bottom
+      anchors.left: parent.left
+      margin-left: 420
+
     RTCColumnLabel
-      id: stanceTitle
-      anchors.top: presetCombo.bottom
+      id: stanceTitle      anchors.top: presetCombo.bottom
       anchors.left: parent.left
       margin-left: 440
       margin-top: 16
@@ -1044,7 +1015,7 @@ MainWindow
       id: runeBox
       anchors.verticalCenter: runeSlot.verticalCenter
       anchors.left: parent.left
-      margin-left: 650
+      margin-left: 628
       width: 16
 
     RTCSlot
@@ -1071,7 +1042,7 @@ MainWindow
       id: rune2Box
       anchors.verticalCenter: rune2Slot.verticalCenter
       anchors.left: parent.left
-      margin-left: 650
+      margin-left: 628
       width: 16
 
     // --- toggles
@@ -1128,8 +1099,8 @@ MainWindow
       anchors.top: shooterBox.bottom
       anchors.left: parent.left
       margin-left: 440
-      margin-top: 8
-      width: 218
+      margin-top: 10
+      width: 200
       text: Set Key (Target / Shooter)
       @onClick: modules.game_helper.setTargetKey()
 
