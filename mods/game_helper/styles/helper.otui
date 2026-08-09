@@ -111,6 +111,64 @@ RTCStepper < UIWidget
     anchors.verticalCenter: parent.verticalCenter
     margin-left: 1
 
+// Spell chooser, styled like the spell list / hotkey assignment: icon on the
+// left, spell name and words beside it.
+RTCSpellPickerRow < Label
+  font: verdana-11px-monochrome
+  background-color: alpha
+  text-offset: 42 3
+  focusable: true
+  height: 36
+  image-clip: 0 0 32 32
+  image-size: 32 32
+  image-offset: 2 2
+  image-source: /images/game/spells/spell-icons-32x32
+
+  $focus:
+    background-color: #ffffff22
+    color: #ffffff
+
+RTCSpellPickerWindow < MainWindow
+  id: spellPicker
+  !text: tr('Select Spell')
+  size: 360 420
+
+  TextList
+    id: pickerList
+    vertical-scrollbar: pickerScroll
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: pickerClear.top
+    margin-bottom: 8
+    margin-right: 14
+    padding: 1
+    focusable: false
+
+  VerticalScrollBar
+    id: pickerScroll
+    anchors.top: pickerList.top
+    anchors.bottom: pickerList.bottom
+    anchors.right: parent.right
+    step: 36
+    pixels-scroll: true
+
+  Button
+    id: pickerClear
+    !text: tr('Clear')
+    anchors.left: parent.left
+    anchors.bottom: parent.bottom
+    width: 90
+    height: 22
+
+  Button
+    id: pickerCancel
+    !text: tr('Cancel')
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    width: 90
+    height: 22
+
 MainWindow
   id: helperWindow
   size: 900 474
@@ -171,11 +229,11 @@ MainWindow
       id: charPreview
       anchors.top: parent.top
       anchors.horizontalCenter: parent.horizontalCenter
-      margin-top: 26
-      size: 104 104
+      margin-top: 22
+      size: 64 64
       image-source: /images/ui/panel_flat
       image-border: 1
-      padding: 4
+      fixed-creature-size: true
 
     RTCValueLabel
       id: presetLabel
@@ -308,30 +366,30 @@ MainWindow
     // bound hotkeys, pinned to the bottom so the sidebar reads as full
     RTCSep
       id: sideSep3
+      anchors.top: foodItem.bottom
       anchors.left: parent.left
       anchors.right: parent.right
-      anchors.bottom: keysTitle.top
-      margin-bottom: 8
+      margin-top: 8
 
     RTCSectionLabel
       id: keysTitle
+      anchors.top: sideSep3.bottom
       anchors.left: parent.left
-      anchors.bottom: helperKeyLabel.top
-      margin-bottom: 4
+      margin-top: 6
       text: Hotkeys
 
     RTCValueLabel
       id: helperKeyLabel
+      anchors.top: keysTitle.bottom
       anchors.left: parent.left
-      anchors.bottom: targetKeyLabel.top
-      margin-bottom: 3
+      margin-top: 3
       text: Helper: none
 
     RTCValueLabel
       id: targetKeyLabel
+      anchors.top: helperKeyLabel.bottom
       anchors.left: parent.left
-      anchors.bottom: parent.bottom
-      margin-bottom: 8
+      margin-top: 2
       text: Target / Shooter: none
 
   // --------------------------------------------------------- healing panel
@@ -449,7 +507,7 @@ MainWindow
       id: potHealTitle
       anchors.top: parent.top
       anchors.left: parent.left
-      margin-left: 322
+      margin-left: 286
       text: Potion Healing
 
     // Rows 1-2 are health potions, row 3 is a mana potion.
@@ -457,7 +515,7 @@ MainWindow
       id: pot1Slot
       anchors.top: potHealTitle.bottom
       anchors.left: parent.left
-      margin-left: 322
+      margin-left: 286
       margin-top: 8
     RTCStepper
       id: pot1Hp
@@ -481,7 +539,7 @@ MainWindow
       id: pot2Slot
       anchors.top: pot1Slot.bottom
       anchors.left: parent.left
-      margin-left: 322
+      margin-left: 286
       margin-top: 8
     RTCStepper
       id: pot2Hp
@@ -505,7 +563,7 @@ MainWindow
       id: pot3Slot
       anchors.top: pot2Slot.bottom
       anchors.left: parent.left
-      margin-left: 322
+      margin-left: 286
       margin-top: 8
     RTCStepper
       id: pot3Mana
@@ -530,14 +588,14 @@ MainWindow
       id: manaTrainTitle
       anchors.top: parent.top
       anchors.left: parent.left
-      margin-left: 560
+      margin-left: 452
       text: Mana Training
 
     RTCSpellSlot
       id: manaTrainSlot
       anchors.top: manaTrainTitle.bottom
       anchors.left: parent.left
-      margin-left: 560
+      margin-left: 452
       margin-top: 8
     RTCCheck
       id: manaTrainBox
@@ -562,7 +620,7 @@ MainWindow
       id: manaTrainWords
       anchors.top: manaTrainSlot.bottom
       anchors.left: parent.left
-      margin-left: 560
+      margin-left: 452
       margin-top: 6
       width: 178
       height: 18
@@ -572,7 +630,7 @@ MainWindow
       id: exTrainTitle
       anchors.top: manaTrainWords.bottom
       anchors.left: parent.left
-      margin-left: 560
+      margin-left: 452
       margin-top: 14
       text: Exercise Training
 
@@ -580,7 +638,7 @@ MainWindow
       id: exTrainSlot
       anchors.top: exTrainTitle.bottom
       anchors.left: parent.left
-      margin-left: 560
+      margin-left: 452
       margin-top: 8
     RTCCheck
       id: exTrainBox
@@ -989,10 +1047,37 @@ MainWindow
       margin-left: 650
       width: 16
 
+    RTCSlot
+      id: rune2Slot
+      anchors.top: runeSlot.bottom
+      anchors.left: parent.left
+      margin-left: 440
+      margin-top: 6
+    ComboBox
+      id: rune2Mobs
+      anchors.verticalCenter: rune2Slot.verticalCenter
+      anchors.left: parent.left
+      margin-left: 494
+      width: 62
+      height: 20
+    ComboBox
+      id: rune2Prio
+      anchors.verticalCenter: rune2Slot.verticalCenter
+      anchors.left: parent.left
+      margin-left: 578
+      width: 62
+      height: 20
+    RTCCheck
+      id: rune2Box
+      anchors.verticalCenter: rune2Slot.verticalCenter
+      anchors.left: parent.left
+      margin-left: 650
+      width: 16
+
     // --- toggles
     RTCCheck
       id: comboOrderBox
-      anchors.top: runeSlot.bottom
+      anchors.top: rune2Slot.bottom
       anchors.left: parent.left
       margin-left: 440
       margin-top: 16
@@ -1014,7 +1099,7 @@ MainWindow
       anchors.left: parent.left
       margin-left: 440
       margin-top: 4
-      width: 150
+      width: 186
       text: Auto Target
 
     RTCInfo
@@ -1029,7 +1114,7 @@ MainWindow
       anchors.left: parent.left
       margin-left: 440
       margin-top: 4
-      width: 150
+      width: 186
       text: Enable Shooter Helper
 
     RTCInfo

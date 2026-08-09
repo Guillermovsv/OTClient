@@ -61,7 +61,10 @@ local function defaultConfig()
       { enabled = false, words = '', mana = 20, mobs = 1, prio = 5, icon = 0 },
     },
     shooter = false, autoTarget = false,
-    rune = { enabled = false, item = 0, mobs = 1, prio = 1 },
+    runes = {
+      { enabled = false, item = 0, mobs = 1, prio = 1 },
+      { enabled = false, item = 0, mobs = 1, prio = 2 },
+    },
     helperKey = '', targetKey = '',
     schemaVersion = 2,
   }
@@ -75,6 +78,7 @@ local currentPreset = 'Default'
 -- ---------------------------------------------------------------------------
 function init()
   connect(g_game, { onGameStart = onGameStart, onGameEnd = onGameEnd })
+  connect(LocalPlayer, { onOutfitChange = onOutfitChange })
 
   helperButton = modules.client_topmenu.addRightGameToggleButton(
     'helperButton', tr('RTC Helper'), '/images/topbuttons/combatcontrols', toggle)
@@ -109,8 +113,13 @@ function init()
 
 end
 
+function onOutfitChange(player)
+  if player and player:isLocalPlayer() then updatePreview(player) end
+end
+
 function terminate()
   disconnect(g_game, { onGameStart = onGameStart, onGameEnd = onGameEnd })
+  disconnect(LocalPlayer, { onOutfitChange = onOutfitChange })
   clearHotkeys()
   if loopEvent then loopEvent:cancel() loopEvent = nil end
   if helperButton then helperButton:destroy() helperButton = nil end
@@ -204,6 +213,9 @@ function show()
   helperWindow:raise()
   helperWindow:focus()
   if helperButton then helperButton:setOn(true) end
+  -- onGameStart can fire before the outfit has arrived, which left the preview
+  -- empty for the rest of the session; refresh it whenever the window opens.
+  updatePreview(g_game.getLocalPlayer())
 end
 
 function hide()
@@ -323,7 +335,11 @@ local function normalizeConfig(saved)
   end
   base.schemaVersion = 2
   base.exTrain   = normalizeGroup(saved.exTrain, base.exTrain)
-  base.rune      = normalizeGroup(saved.rune, base.rune)
+  base.runes     = normalizeRows(saved.runes, base.runes)
+  -- carry the single-rune schema into the first row
+  if not saved.runes and type(saved.rune) == 'table' then
+    base.runes[1] = normalizeGroup(saved.rune, base.runes[1])
+  end
   return base
 end
 
@@ -453,7 +469,7 @@ end
 
 -- Slots holding an item: drag one in, or left click to pick with the crosshair,
 -- right click to clear.
-local ITEM_SLOT_IDS = { 'pot1Slot', 'pot2Slot', 'pot3Slot', 'runeSlot', 'exTrainSlot' }
+local ITEM_SLOT_IDS = { 'pot1Slot', 'pot2Slot', 'pot3Slot', 'runeSlot', 'rune2Slot', 'exTrainSlot' }
 
 -- Slots holding a spell: left click opens the spell picker, right click clears.
 -- Each maps to the config field the chosen spell is written into.
@@ -504,8 +520,10 @@ function wireCombos()
     fillCombo('atk' .. i .. 'Mobs', counts)
     fillCombo('atk' .. i .. 'Prio', ORDINALS)
   end
-  fillCombo('runeMobs', counts)
-  fillCombo('runePrio', ORDINALS)
+  for i = 1, 2 do
+    fillCombo('rune' .. (i > 1 and i or '') .. 'Mobs', counts)
+    fillCombo('rune' .. (i > 1 and i or '') .. 'Prio', ORDINALS)
+  end
 end
 
 -- Spell icon slots -----------------------------------------------------------
@@ -546,46 +564,66 @@ local function spellsForVocation()
   return out
 end
 
--- Popup listing spells; `filter` narrows it (used for the stance slots).
+-- Spell chooser window: an icon list, the same shape the spell list and the
+-- hotkey spell assignment use, rather than a plain text menu.
+local spellPickerWindow = nil
+
+local function closeSpellPicker()
+  if spellPickerWindow then
+    spellPickerWindow:destroy()
+    spellPickerWindow = nil
+  end
+end
+
+local function applySpell(entry, info)
+  local target = entry.get()
+  if target then
+    target[entry.words] = (info and info.words) or ''
+    target[entry.icon or 'icon'] = (info and tonumber(info.clientId)) or 0
+  end
+  setSpellSlot(entry.slot, info and info.clientId or 0, info and info.words or '')
+  if entry.wordsField then setText(entry.wordsField, (info and info.words) or '') end
+  saveConfig()
+end
+
 local function openSpellPicker(entry, filter)
-  local list = spellsForVocation()
-  local menu = g_ui.createWidget('PopupMenu')
-  menu:setGameMenu(true)
+  closeSpellPicker()
+
+  spellPickerWindow = g_ui.createWidget('RTCSpellPickerWindow', g_ui.getRootWidget())
+  local list = spellPickerWindow:getChildById('pickerList')
 
   local added = 0
-  for _, spell in ipairs(list) do
+  for _, spell in ipairs(spellsForVocation()) do
     if not filter or filter(spell.name, spell.info) then
       added = added + 1
-      menu:addOption(spell.name .. "  '" .. (spell.info.words or '') .. "'", function()
-        local target = entry.get()
-        if target then
-          target[entry.words] = spell.info.words or ''
-          target[entry.icon or 'icon'] = tonumber(spell.info.clientId) or 0
-        end
-        setSpellSlot(entry.slot, spell.info.clientId, spell.info.words)
-        if entry.wordsField then setText(entry.wordsField, spell.info.words or '') end
-        saveConfig()
-      end)
+      local row = g_ui.createWidget('RTCSpellPickerRow', list)
+      row:setText(spell.name .. "\n'" .. (spell.info.words or '') .. "'")
+      local clientId = tonumber(spell.info.clientId)
+      if clientId then
+        row:setImageClip(Spells.getImageClip(clientId, SPELL_PROFILE))
+      end
+      row.onClick = function()
+        applySpell(entry, spell.info)
+        closeSpellPicker()
+      end
     end
   end
 
   if added == 0 then
-    menu:addOption(tr('No spells available for this vocation'), function() end)
-  else
-    menu:addSeparator()
-    menu:addOption(tr('Clear'), function()
-      local target = entry.get()
-      if target then
-        target[entry.words] = ''
-        target[entry.icon or 'icon'] = 0
-      end
-      setSpellSlot(entry.slot, 0, '')
-      if entry.wordsField then setText(entry.wordsField, '') end
-      saveConfig()
-    end)
+    local row = g_ui.createWidget('RTCSpellPickerRow', list)
+    row:setText(tr('No spells available for this vocation'))
+    row:setFocusable(false)
   end
 
-  menu:display(g_window.getMousePosition())
+  spellPickerWindow:getChildById('pickerClear').onClick = function()
+    applySpell(entry, nil)
+    closeSpellPicker()
+  end
+  spellPickerWindow:getChildById('pickerCancel').onClick = closeSpellPicker
+  spellPickerWindow.onEscape = closeSpellPicker
+
+  spellPickerWindow:raise()
+  spellPickerWindow:focus()
 end
 
 -- Item slots: crosshair pick ---------------------------------------------------
@@ -769,10 +807,13 @@ function populateUI()
 
   setChecked('shooterBox', config.shooter)
   setChecked('autoTargetBox', config.autoTarget)
-  setSlot('runeSlot', config.rune.item)
-  setCombo('runeMobs', config.rune.mobs or 1)
-  setCombo('runePrio', config.rune.prio or 1)
-  setChecked('runeBox', config.rune.enabled)
+  for i, r in ipairs(config.runes) do
+    local n = (i > 1 and i or '')
+    setSlot('rune' .. n .. 'Slot', r.item)
+    setCombo('rune' .. n .. 'Mobs', r.mobs or 1)
+    setCombo('rune' .. n .. 'Prio', r.prio or i)
+    setChecked('rune' .. n .. 'Box', r.enabled)
+  end
 
   refreshStatus()
 end
@@ -825,10 +866,13 @@ function saveFromUI()
 
   config.shooter    = isChecked('shooterBox')
   config.autoTarget = isChecked('autoTargetBox')
-  config.rune.item    = getSlot('runeSlot', config.rune.item)
-  config.rune.mobs    = getCombo('runeMobs', config.rune.mobs)
-  config.rune.prio    = getCombo('runePrio', config.rune.prio)
-  config.rune.enabled = isChecked('runeBox')
+  for i, r in ipairs(config.runes) do
+    local n = (i > 1 and i or '')
+    r.item    = getSlot('rune' .. n .. 'Slot', r.item)
+    r.mobs    = getCombo('rune' .. n .. 'Mobs', r.mobs)
+    r.prio    = getCombo('rune' .. n .. 'Prio', r.prio)
+    r.enabled = isChecked('rune' .. n .. 'Box')
+  end
 
   saveConfig()
   applyHotkeys()
@@ -1121,12 +1165,25 @@ local function runCaster(player, states, now)
     end
   end
 
-  -- rune on target
-  if config.rune.enabled and config.rune.item > 0 and count >= (config.rune.mobs or 1)
-      and ready('rune', now, 500) then
-    g_game.useInventoryItemWith(config.rune.item, target)
-    fire('rune', now)
-    stats.runes = stats.runes + 1
+  -- runes on target, in the priority order chosen for them
+  local runeRows = {}
+  for i, r in ipairs(config.runes) do
+    table.insert(runeRows, { idx = i, row = r })
+  end
+  table.sort(runeRows, function(x, y)
+    local px, py = (x.row.prio or x.idx), (y.row.prio or y.idx)
+    if px ~= py then return px < py end
+    return x.idx < y.idx
+  end)
+  for _, entry in ipairs(runeRows) do
+    local r = entry.row
+    if r.enabled and r.item > 0 and count >= (r.mobs or 1)
+        and ready('rune' .. entry.idx, now, 500) then
+      g_game.useInventoryItemWith(r.item, target)
+      fire('rune' .. entry.idx, now)
+      stats.runes = stats.runes + 1
+      break
+    end
   end
 end
 
