@@ -683,6 +683,13 @@ function CharacterList.create(characters, account, otui)
         otui = 'characterlist'
     end
 
+    -- On a free-premium server the login packet still says Free; present the
+    -- account as premium with no expiry. See FORCE_PREMIUM_ACCOUNT.
+    if FORCE_PREMIUM_ACCOUNT and account then
+        account.subStatus = SubscriptionStatus.Premium
+        account.premDays = 0
+    end
+
     if charactersWindow then
         charactersWindow:destroy()
     end

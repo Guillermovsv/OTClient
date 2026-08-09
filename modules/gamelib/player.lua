@@ -737,3 +737,23 @@ end
 function LoadedPlayer:setVocation(vocationId)
   self.playerVocation = vocationId
 end
+
+-- Free-premium servers report premium=false in the player-data packet even
+-- though every character has premium benefits, which made in-game premium
+-- checks (stamina bonus text, quick loot, reward wall, cyclopedia) claim the
+-- player was free. Present premium as active when FORCE_PREMIUM_ACCOUNT is on;
+-- the server stays authoritative for what premium actually grants.
+-- See FORCE_PREMIUM_ACCOUNT in gamelib/const.lua.
+local rawIsPremium = LocalPlayer.isPremium
+
+function LocalPlayer:isPremium()
+  if FORCE_PREMIUM_ACCOUNT then
+    return true
+  end
+  return rawIsPremium(self)
+end
+
+-- The unmodified server value, for anything that needs the truth.
+function LocalPlayer:isPremiumReportedByServer()
+  return rawIsPremium(self)
+end

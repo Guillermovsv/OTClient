@@ -578,3 +578,17 @@ WEAPON_BOW = 5
 WEAPON_CROSSBOW = 6
 WEAPON_WANDROD = 7
 WEAPON_THROW = 8
+
+-- Delyriumz runs "free premium": the server grants premium benefits to every
+-- account, but it still reports subStatus Free / premDays 0 in the login packet
+-- and premium=false in the player-data packet. The client was therefore
+-- correctly rendering what it was told -- "Free Account" -- even though every
+-- character actually has premium.
+--
+-- With this on, the client presents the account as premium: the character list
+-- shows "Gratis Premium Account" (the client's own wording for premium with no
+-- expiry) and LocalPlayer:isPremium() reports true, so in-game premium gates
+-- stop claiming the player is free.
+--
+-- Set to false to go back to trusting the server's flags verbatim.
+FORCE_PREMIUM_ACCOUNT = true
