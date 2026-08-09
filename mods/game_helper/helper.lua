@@ -1,40 +1,55 @@
 -- RTC Helper
 -- Standalone in-client healing & attack assistant. It intentionally does NOT use
 -- game_bot / vBot / cavebot; it drives the plain game actions directly
--- (g_game.talk / useInventoryItem / useWith / attack) from a simple settings UI.
+-- (g_game.talk / useInventoryItem / useWith / attack) from a settings UI.
 
 helperWindow = nil
 local helperButton = nil
 local loopEvent = nil
 local actionGate = {}
+local boundHelperKey = nil
+local boundTargetKey = nil
 
 local SETTINGS_KEY = 'RTCHelper'
+local PRESETS_KEY = 'RTCHelperPresets'
 local TICK_MS = 200
+
+local stats = {
+  heals = 0, potions = 0, attacks = 0, runes = 0,
+  hastes = 0, foods = 0, manaTrains = 0, exTrains = 0, golds = 0,
+}
 
 local function defaultConfig()
   return {
     enabled = false,
-    autoHaste = false, hastePz = false, hasteWords = 'utani hur',
+    autoHaste = false, hastePz = false, hasteWords = 'utani hur', hasteItem = 0,
     autoEat = false, foodItem = 3725,
+    changeGold = false, autoReconnect = false,
+    comboOrder = false,
     heals = {
-      { enabled = false, words = '', hp = 80 },
-      { enabled = false, words = '', hp = 60 },
-      { enabled = false, words = '', hp = 40 },
+      { enabled = false, words = '', hp = 80, item = 0 },
+      { enabled = false, words = '', hp = 60, item = 0 },
+      { enabled = false, words = '', hp = 40, item = 0 },
     },
     potHp   = { enabled = false, item = 0, hp = 50 },
     potMana = { enabled = false, item = 0, mana = 40 },
+    manaTrain = { enabled = false, words = '', pct = 100, item = 0 },
+    exTrain = { enabled = false, item = 0 },
     attacks = {
-      { enabled = false, words = '', mana = 20, mobs = 1 },
-      { enabled = false, words = '', mana = 20, mobs = 1 },
-      { enabled = false, words = '', mana = 20, mobs = 1 },
-      { enabled = false, words = '', mana = 20, mobs = 1 },
-      { enabled = false, words = '', mana = 20, mobs = 1 },
+      { enabled = false, words = '', mana = 20, mobs = 1, prio = 1, item = 0 },
+      { enabled = false, words = '', mana = 20, mobs = 1, prio = 2, item = 0 },
+      { enabled = false, words = '', mana = 20, mobs = 1, prio = 3, item = 0 },
+      { enabled = false, words = '', mana = 20, mobs = 1, prio = 4, item = 0 },
+      { enabled = false, words = '', mana = 20, mobs = 1, prio = 5, item = 0 },
     },
-    shooter = false, autoTarget = false, rune = { enabled = false, item = 0 },
+    shooter = false, autoTarget = false,
+    rune = { enabled = false, item = 0, mobs = 1 },
+    helperKey = '', targetKey = '',
   }
 end
 
 local config = defaultConfig()
+local currentPreset = 'Default'
 
 -- ---------------------------------------------------------------------------
 -- lifecycle
@@ -51,7 +66,10 @@ function init()
   helperWindow:hide()
 
   loadConfig()
+  wireSteppers()
+  wireSlots()
   populateUI()
+  refreshPresetCombo()
   selectTab('healing')
 
   -- live master toggle (no need to press Save just to enable/disable)
@@ -64,6 +82,7 @@ function init()
     end
   end
 
+  applyHotkeys()
   loopEvent = cycleEvent(loop, TICK_MS)
 
   if g_game.isOnline() then onGameStart() end
@@ -71,6 +90,7 @@ end
 
 function terminate()
   disconnect(g_game, { onGameStart = onGameStart, onGameEnd = onGameEnd })
+  clearHotkeys()
   if loopEvent then loopEvent:cancel() loopEvent = nil end
   if helperButton then helperButton:destroy() helperButton = nil end
   if helperWindow then helperWindow:destroy() helperWindow = nil end
@@ -81,8 +101,17 @@ function onGameStart()
   if player and helperWindow then
     local name = helperWindow:recursiveGetChildById('charName')
     if name then name:setText(player:getName()) end
+    local preview = helperWindow:recursiveGetChildById('charPreview')
+    if preview and preview.setOutfit then
+      preview:setOutfit(player:getOutfit())
+      if preview.setCreatureSize then preview:setCreatureSize(64) end
+    end
   end
   refreshStatus()
+end
+
+function onGameEnd()
+  if helperWindow then helperWindow:hide() end
 end
 
 function selectTab(which)
@@ -100,10 +129,8 @@ function selectTab(which)
   vis('casterPanel', not healing)
   on('healingTabBtn', healing)
   on('casterTabBtn', not healing)
-end
-
-function onGameEnd()
-  if helperWindow then helperWindow:hide() end
+  local title = helperWindow:recursiveGetChildById('tabTitle')
+  if title then title:setText(healing and 'Healing' or 'RTCaster') end
 end
 
 -- ---------------------------------------------------------------------------
@@ -141,16 +168,16 @@ function refreshStatus()
     label:setText('Helper Status: Disabled')
     label:setColor('#cc4444')
   end
+  local preset = helperWindow:recursiveGetChildById('presetLabel')
+  if preset then preset:setText('Preset: ' .. currentPreset) end
 end
 
 -- ---------------------------------------------------------------------------
 -- persistence
 -- ---------------------------------------------------------------------------
--- g_settings round-trips tables through a string-keyed representation, so a
--- saved array comes back as { ["1"] = {...} } and config.heals[1] is nil. That
--- crashed populateUI on the next start ("attempt to index a nil value") and
--- took the whole module down with it. Rebuild every row list with real numeric
--- indices, padded to the length the UI expects and merged over the defaults.
+-- g_settings serializes a Lua array to OTML as keyed nodes (1:, 2:, 3:) and
+-- reads them back as STRING keys, so config.heals[1] came back nil and took the
+-- whole module down on the next start. Rebuild rows with real numeric indices.
 local function normalizeRows(saved, defaults)
   local out = {}
   for i = 1, #defaults do
@@ -179,31 +206,55 @@ local function normalizeGroup(saved, defaults)
   return out
 end
 
-function loadConfig()
+local function normalizeConfig(saved)
   local base = defaultConfig()
-  local saved = g_settings.getNode(SETTINGS_KEY)
-  if type(saved) ~= 'table' then
-    config = base
-    return
-  end
+  if type(saved) ~= 'table' then return base end
 
-  for _, key in ipairs({ 'enabled', 'autoHaste', 'hastePz', 'hasteWords',
-                         'autoEat', 'foodItem', 'shooter', 'autoTarget' }) do
+  for _, key in ipairs({ 'enabled', 'autoHaste', 'hastePz', 'hasteWords', 'hasteItem',
+                         'autoEat', 'foodItem', 'changeGold', 'autoReconnect',
+                         'comboOrder', 'shooter', 'autoTarget',
+                         'helperKey', 'targetKey' }) do
     if saved[key] ~= nil then base[key] = saved[key] end
   end
 
-  base.heals   = normalizeRows(saved.heals, base.heals)
-  base.attacks = normalizeRows(saved.attacks, base.attacks)
-  base.potHp   = normalizeGroup(saved.potHp, base.potHp)
-  base.potMana = normalizeGroup(saved.potMana, base.potMana)
-  base.rune    = normalizeGroup(saved.rune, base.rune)
+  base.heals     = normalizeRows(saved.heals, base.heals)
+  base.attacks   = normalizeRows(saved.attacks, base.attacks)
+  base.potHp     = normalizeGroup(saved.potHp, base.potHp)
+  base.potMana   = normalizeGroup(saved.potMana, base.potMana)
+  base.manaTrain = normalizeGroup(saved.manaTrain, base.manaTrain)
+  base.exTrain   = normalizeGroup(saved.exTrain, base.exTrain)
+  base.rune      = normalizeGroup(saved.rune, base.rune)
+  return base
+end
 
-  config = base
+function loadConfig()
+  config = normalizeConfig(g_settings.getNode(SETTINGS_KEY))
+  local presets = g_settings.getNode(PRESETS_KEY)
+  if type(presets) == 'table' and type(presets.current) == 'string' then
+    currentPreset = presets.current
+  end
 end
 
 function saveConfig()
   g_settings.setNode(SETTINGS_KEY, config)
+  local presets = g_settings.getNode(PRESETS_KEY)
+  if type(presets) ~= 'table' then presets = { list = {} } end
+  if type(presets.list) ~= 'table' then presets.list = {} end
+  presets.current = currentPreset
+  presets.list[currentPreset] = config
+  g_settings.setNode(PRESETS_KEY, presets)
   g_settings.save()
+end
+
+local function presetNames()
+  local presets = g_settings.getNode(PRESETS_KEY)
+  local names = {}
+  if type(presets) == 'table' and type(presets.list) == 'table' then
+    for name in pairs(presets.list) do table.insert(names, name) end
+  end
+  if #names == 0 then table.insert(names, 'Default') end
+  table.sort(names)
+  return names
 end
 
 -- ---------------------------------------------------------------------------
@@ -221,22 +272,111 @@ end
 local function setText(id, v)
   local x = w(id); if x then x:setText(tostring(v ~= nil and v or '')) end
 end
-local function setValue(id, v)
-  local x = w(id); if x and x.setValue then x:setValue(tonumber(v) or 0) end
+local function getText(id)
+  local x = w(id); return x and x:getText() or ''
 end
 local function setChecked(id, v)
   local x = w(id); if x and x.setChecked then x:setChecked(v and true or false) end
 end
-local function getText(id)
-  local x = w(id); return x and x:getText() or ''
+local function isChecked(id)
+  local x = w(id); return (x and x.isChecked and x:isChecked()) and true or false
 end
-local function getValue(id, fallback)
+local function setSpin(id, v)
+  local x = w(id); if x and x.setValue then x:setValue(tonumber(v) or 0) end
+end
+local function getSpin(id, fallback)
   local x = w(id)
   if x and x.getValue then return x:getValue() end
   return fallback or 0
 end
-local function isChecked(id)
-  local x = w(id); return (x and x.isChecked and x:isChecked()) and true or false
+
+-- RTCStepper is a composite: the number lives in its 'spin' child.
+local function stepper(id)
+  local x = w(id)
+  return x and x:getChildById('spin') or nil
+end
+local function setStepper(id, v)
+  local s = stepper(id); if s and s.setValue then s:setValue(tonumber(v) or 0) end
+end
+local function getStepper(id, fallback)
+  local s = stepper(id)
+  if s and s.getValue then return s:getValue() end
+  return fallback or 0
+end
+
+-- An empty slot must be cleared AND hidden. UIItem treats id 0 as a real thing
+-- type and tries to draw it, flooding the log with "Invalid thing type client
+-- id 0 in category 4" on every frame the window is visible.
+local function setSlot(id, itemId)
+  local x = w(id)
+  if not x or not x.setItemId then return end
+  itemId = tonumber(itemId) or 0
+  if itemId > 0 then
+    x:setItemId(itemId)
+    if x.setItemVisible then x:setItemVisible(true) end
+  else
+    if x.clearItem then x:clearItem() end
+    if x.setItemVisible then x:setItemVisible(false) end
+  end
+end
+local function getSlot(id, fallback)
+  local x = w(id)
+  if x and x.getItemId then return x:getItemId() end
+  return fallback or 0
+end
+
+-- Wire the < > buttons of every stepper to nudge its spin box.
+function wireSteppers()
+  if not helperWindow then return end
+  local ids = { 'heal1Hp', 'heal2Hp', 'heal3Hp', 'pot1Hp', 'pot2Mana',
+                'manaTrainPct', 'atk1Mana', 'atk2Mana', 'atk3Mana',
+                'atk4Mana', 'atk5Mana' }
+  for _, id in ipairs(ids) do
+    local box = w(id)
+    if box then
+      local spin = box:getChildById('spin')
+      local dec = box:getChildById('dec')
+      local inc = box:getChildById('inc')
+      if spin and spin.setMinimum then spin:setMinimum(0) spin:setMaximum(100) end
+      if dec and spin then
+        dec.onClick = function() spin:setValue(math.max(0, spin:getValue() - 1)) end
+      end
+      if inc and spin then
+        inc.onClick = function() spin:setValue(math.min(100, spin:getValue() + 1)) end
+      end
+    end
+  end
+end
+
+-- Drag an item from your inventory/containers onto a slot to bind it; right
+-- click a slot to clear it. Mirrors how the action bar accepts drops.
+local SLOT_IDS = {
+  'hasteSlot', 'heal1Slot', 'heal2Slot', 'heal3Slot',
+  'pot1Slot', 'pot2Slot', 'manaTrainSlot', 'exTrainSlot',
+  'atk1Slot', 'atk2Slot', 'atk3Slot', 'atk4Slot', 'atk5Slot', 'runeSlot',
+}
+
+function wireSlots()
+  if not helperWindow then return end
+  for _, id in ipairs(SLOT_IDS) do
+    local slot = w(id)
+    if slot then
+      slot:setDraggable(false)
+      slot.onDrop = function(self, draggedWidget)
+        local thing = draggedWidget and draggedWidget.currentDragThing
+        if not thing or not thing.getId then return false end
+        setSlot(id, thing:getId())
+        return true
+      end
+      slot.onMouseRelease = function(self, _, mouseButton)
+        if mouseButton == MouseRightButton then
+          setSlot(id, 0)
+          return true
+        end
+        return false
+      end
+    end
+  end
 end
 
 function populateUI()
@@ -246,34 +386,50 @@ function populateUI()
   setChecked('autoHasteBox', config.autoHaste)
   setChecked('hastePzBox', config.hastePz)
   setText('hasteWords', config.hasteWords or '')
+  setSlot('hasteSlot', config.hasteItem)
   setChecked('autoEatBox', config.autoEat)
   setText('foodItem', config.foodItem or 0)
+  setChecked('changeGoldBox', config.changeGold)
+  setChecked('autoReconnectBox', config.autoReconnect)
+  setChecked('comboOrderBox', config.comboOrder)
 
   for i = 1, #config.heals do
     local h = config.heals[i]
     setText('heal' .. i .. 'Words', h.words or '')
-    setValue('heal' .. i .. 'Hp', h.hp or 0)
+    setStepper('heal' .. i .. 'Hp', h.hp or 0)
     setChecked('heal' .. i .. 'Box', h.enabled)
+    setSlot('heal' .. i .. 'Slot', h.item)
   end
 
-  setText('pot1Item', config.potHp.item or 0)
-  setValue('pot1Hp', config.potHp.hp or 0)
+  setSlot('pot1Slot', config.potHp.item)
+  setStepper('pot1Hp', config.potHp.hp or 0)
   setChecked('pot1Box', config.potHp.enabled)
-  setText('pot2Item', config.potMana.item or 0)
-  setValue('pot2Mana', config.potMana.mana or 0)
+  setSlot('pot2Slot', config.potMana.item)
+  setStepper('pot2Mana', config.potMana.mana or 0)
   setChecked('pot2Box', config.potMana.enabled)
+
+  setChecked('manaTrainBox', config.manaTrain.enabled)
+  setText('manaTrainWords', config.manaTrain.words or '')
+  setStepper('manaTrainPct', config.manaTrain.pct or 100)
+  setSlot('manaTrainSlot', config.manaTrain.item)
+
+  setChecked('exTrainBox', config.exTrain.enabled)
+  setSlot('exTrainSlot', config.exTrain.item)
 
   for i = 1, #config.attacks do
     local a = config.attacks[i]
     setText('atk' .. i .. 'Words', a.words or '')
-    setValue('atk' .. i .. 'Mana', a.mana or 0)
-    setValue('atk' .. i .. 'Mobs', a.mobs or 0)
+    setStepper('atk' .. i .. 'Mana', a.mana or 0)
+    setSpin('atk' .. i .. 'Mobs', a.mobs or 1)
+    setSpin('atk' .. i .. 'Prio', a.prio or i)
     setChecked('atk' .. i .. 'Box', a.enabled)
+    setSlot('atk' .. i .. 'Slot', a.item)
   end
 
   setChecked('shooterBox', config.shooter)
   setChecked('autoTargetBox', config.autoTarget)
-  setText('runeItem', config.rune.item or 0)
+  setSlot('runeSlot', config.rune.item)
+  setSpin('runeMobs', config.rune.mobs or 1)
   setChecked('runeBox', config.rune.enabled)
 
   refreshStatus()
@@ -290,36 +446,245 @@ function saveFromUI()
   config.autoHaste = isChecked('autoHasteBox')
   config.hastePz   = isChecked('hastePzBox')
   config.hasteWords = getText('hasteWords')
+  config.hasteItem = getSlot('hasteSlot', config.hasteItem)
   config.autoEat   = isChecked('autoEatBox')
   config.foodItem  = num('foodItem')
+  config.changeGold = isChecked('changeGoldBox')
+  config.autoReconnect = isChecked('autoReconnectBox')
+  config.comboOrder = isChecked('comboOrderBox')
 
   for i = 1, #config.heals do
     config.heals[i].words   = getText('heal' .. i .. 'Words')
-    config.heals[i].hp      = getValue('heal' .. i .. 'Hp', config.heals[i].hp)
+    config.heals[i].hp      = getStepper('heal' .. i .. 'Hp', config.heals[i].hp)
     config.heals[i].enabled = isChecked('heal' .. i .. 'Box')
+    config.heals[i].item    = getSlot('heal' .. i .. 'Slot', config.heals[i].item)
   end
 
-  config.potHp.item    = num('pot1Item')
-  config.potHp.hp      = getValue('pot1Hp', config.potHp.hp)
+  config.potHp.item    = getSlot('pot1Slot', config.potHp.item)
+  config.potHp.hp      = getStepper('pot1Hp', config.potHp.hp)
   config.potHp.enabled = isChecked('pot1Box')
-  config.potMana.item    = num('pot2Item')
-  config.potMana.mana    = getValue('pot2Mana', config.potMana.mana)
+  config.potMana.item    = getSlot('pot2Slot', config.potMana.item)
+  config.potMana.mana    = getStepper('pot2Mana', config.potMana.mana)
   config.potMana.enabled = isChecked('pot2Box')
+
+  config.manaTrain.enabled = isChecked('manaTrainBox')
+  config.manaTrain.words   = getText('manaTrainWords')
+  config.manaTrain.pct     = getStepper('manaTrainPct', config.manaTrain.pct)
+  config.manaTrain.item    = getSlot('manaTrainSlot', config.manaTrain.item)
+
+  config.exTrain.enabled = isChecked('exTrainBox')
+  config.exTrain.item    = getSlot('exTrainSlot', config.exTrain.item)
 
   for i = 1, #config.attacks do
     config.attacks[i].words   = getText('atk' .. i .. 'Words')
-    config.attacks[i].mana    = getValue('atk' .. i .. 'Mana', config.attacks[i].mana)
-    config.attacks[i].mobs    = getValue('atk' .. i .. 'Mobs', config.attacks[i].mobs)
+    config.attacks[i].mana    = getStepper('atk' .. i .. 'Mana', config.attacks[i].mana)
+    config.attacks[i].mobs    = getSpin('atk' .. i .. 'Mobs', config.attacks[i].mobs)
+    config.attacks[i].prio    = getSpin('atk' .. i .. 'Prio', config.attacks[i].prio)
     config.attacks[i].enabled = isChecked('atk' .. i .. 'Box')
+    config.attacks[i].item    = getSlot('atk' .. i .. 'Slot', config.attacks[i].item)
   end
 
   config.shooter    = isChecked('shooterBox')
   config.autoTarget = isChecked('autoTargetBox')
-  config.rune.item    = num('runeItem')
+  config.rune.item    = getSlot('runeSlot', config.rune.item)
+  config.rune.mobs    = getSpin('runeMobs', config.rune.mobs)
   config.rune.enabled = isChecked('runeBox')
 
   saveConfig()
+  applyHotkeys()
   refreshStatus()
+end
+
+-- ---------------------------------------------------------------------------
+-- presets
+-- ---------------------------------------------------------------------------
+function refreshPresetCombo()
+  local combo = w('presetCombo')
+  if not combo or not combo.clearOptions then return end
+  combo:clearOptions()
+  for _, name in ipairs(presetNames()) do
+    combo:addOption(name)
+  end
+  if combo.setCurrentOption then combo:setCurrentOption(currentPreset, true) end
+  combo.onOptionChange = function(_, text)
+    if text and text ~= currentPreset then loadPreset(text) end
+  end
+end
+
+function loadPreset(name)
+  local presets = g_settings.getNode(PRESETS_KEY)
+  if type(presets) == 'table' and type(presets.list) == 'table' and presets.list[name] then
+    config = normalizeConfig(presets.list[name])
+  else
+    config = defaultConfig()
+  end
+  currentPreset = name
+  populateUI()
+  applyHotkeys()
+  saveConfig()
+end
+
+-- displayTextInputBox calls okCallback(unpack(results)) -- the field values
+-- only, with no widget argument in front.
+function newPreset()
+  displayTextInputBox(tr('New Preset'), tr('Preset name:'), function(name)
+    if not name or name == '' then return end
+    currentPreset = name
+    saveConfig()
+    refreshPresetCombo()
+    refreshStatus()
+  end)
+end
+
+function renamePreset()
+  local old = currentPreset
+  displayTextInputBox(tr('Rename Preset'), tr('New name:'), function(name)
+    if not name or name == '' or name == old then return end
+    local presets = g_settings.getNode(PRESETS_KEY)
+    if type(presets) == 'table' and type(presets.list) == 'table' then
+      presets.list[old] = nil
+      g_settings.setNode(PRESETS_KEY, presets)
+    end
+    currentPreset = name
+    saveConfig()
+    refreshPresetCombo()
+    refreshStatus()
+  end)
+end
+
+function deletePreset()
+  if currentPreset == 'Default' then
+    displayInfoBox(tr('RTC Helper'), tr('The Default preset cannot be deleted.'))
+    return
+  end
+  local presets = g_settings.getNode(PRESETS_KEY)
+  if type(presets) == 'table' and type(presets.list) == 'table' then
+    presets.list[currentPreset] = nil
+    presets.current = 'Default'
+    g_settings.setNode(PRESETS_KEY, presets)
+    g_settings.save()
+  end
+  loadPreset('Default')
+  refreshPresetCombo()
+end
+
+-- ---------------------------------------------------------------------------
+-- export / import
+-- ---------------------------------------------------------------------------
+local function serialize(value, indent)
+  indent = indent or ''
+  local t = type(value)
+  if t == 'table' then
+    local parts = { '{\n' }
+    local keys = {}
+    for k in pairs(value) do table.insert(keys, k) end
+    table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+    for _, k in ipairs(keys) do
+      local key = type(k) == 'number' and ('[' .. k .. ']') or ('["' .. tostring(k) .. '"]')
+      table.insert(parts, indent .. '  ' .. key .. ' = ' ..
+        serialize(value[k], indent .. '  ') .. ',\n')
+    end
+    table.insert(parts, indent .. '}')
+    return table.concat(parts)
+  elseif t == 'string' then
+    return string.format('%q', value)
+  end
+  return tostring(value)
+end
+
+function exportConfig()
+  saveFromUI()
+  g_window.setClipboardText('return ' .. serialize(config))
+  displayInfoBox(tr('RTC Helper'),
+    tr('The current preset was copied to your clipboard.'))
+end
+
+function importConfig()
+  local text = g_window.getClipboardText()
+  if not text or text == '' then
+    displayErrorBox(tr('RTC Helper'), tr('Your clipboard is empty.'))
+    return
+  end
+  local chunk = loadstring(text)
+  if not chunk then
+    displayErrorBox(tr('RTC Helper'), tr('The clipboard does not contain a valid preset.'))
+    return
+  end
+  local ok, data = pcall(chunk)
+  if not ok or type(data) ~= 'table' then
+    displayErrorBox(tr('RTC Helper'), tr('The clipboard does not contain a valid preset.'))
+    return
+  end
+  config = normalizeConfig(data)
+  populateUI()
+  applyHotkeys()
+  saveConfig()
+  displayInfoBox(tr('RTC Helper'), tr('Preset imported.'))
+end
+
+-- ---------------------------------------------------------------------------
+-- hotkeys
+-- ---------------------------------------------------------------------------
+function clearHotkeys()
+  if boundHelperKey then g_keyboard.unbindKeyDown(boundHelperKey) boundHelperKey = nil end
+  if boundTargetKey then g_keyboard.unbindKeyDown(boundTargetKey) boundTargetKey = nil end
+end
+
+function applyHotkeys()
+  clearHotkeys()
+  if config.helperKey and config.helperKey ~= '' then
+    boundHelperKey = config.helperKey
+    g_keyboard.bindKeyDown(boundHelperKey, function()
+      config.enabled = not config.enabled
+      setChecked('enableBox', config.enabled)
+      refreshStatus()
+      saveConfig()
+    end)
+  end
+  if config.targetKey and config.targetKey ~= '' then
+    boundTargetKey = config.targetKey
+    g_keyboard.bindKeyDown(boundTargetKey, function()
+      config.shooter = not config.shooter
+      config.autoTarget = config.shooter
+      setChecked('shooterBox', config.shooter)
+      setChecked('autoTargetBox', config.autoTarget)
+      saveConfig()
+    end)
+  end
+end
+
+local function askKey(title, apply)
+  displayTextInputBox(title, tr('Key (for example F5, Ctrl+H). Empty clears it:'),
+    function(key)
+      apply(key or '')
+      saveConfig()
+      applyHotkeys()
+    end)
+end
+
+function setHelperKey()
+  askKey(tr('Set Helper Key'), function(k) config.helperKey = k end)
+end
+
+function setTargetKey()
+  askKey(tr('Set Key (Target / Shooter)'), function(k) config.targetKey = k end)
+end
+
+-- ---------------------------------------------------------------------------
+-- stats
+-- ---------------------------------------------------------------------------
+function showStats()
+  displayInfoBox(tr('Helper Stats'), table.concat({
+    tr('Heal spells cast: %d', stats.heals),
+    tr('Potions used: %d', stats.potions),
+    tr('Attack spells cast: %d', stats.attacks),
+    tr('Runes used: %d', stats.runes),
+    tr('Hastes cast: %d', stats.hastes),
+    tr('Food eaten: %d', stats.foods),
+    tr('Mana training casts: %d', stats.manaTrains),
+    tr('Exercise training uses: %d', stats.exTrains),
+    tr('Gold exchanges: %d', stats.golds),
+  }, '\n'))
 end
 
 -- ---------------------------------------------------------------------------
@@ -365,6 +730,21 @@ local function nearestMonster(player, list)
   return best
 end
 
+-- Rows in the order the caster should try them: by the Priority column when
+-- "Combo in priority order" is on, otherwise in list order.
+local function attackOrder()
+  local rows = {}
+  for i, a in ipairs(config.attacks) do
+    table.insert(rows, { idx = i, row = a })
+  end
+  if config.comboOrder then
+    table.sort(rows, function(x, y)
+      return (x.row.prio or x.idx) < (y.row.prio or y.idx)
+    end)
+  end
+  return rows
+end
+
 local function runCaster(player, states, now)
   if isActive(states, PlayerStates.Pz) then return end -- never attack in protection zone
 
@@ -383,20 +763,42 @@ local function runCaster(player, states, now)
   local mana = manaPercent(player)
   local count = #mobs
 
-  -- attack spells: first matching row in priority order, one cast per tick
-  for i, a in ipairs(config.attacks) do
+  -- attack spells: first matching row, one cast per tick
+  for _, entry in ipairs(attackOrder()) do
+    local a = entry.row
     if a.enabled and a.words ~= '' and mana >= a.mana and count >= a.mobs
-        and ready('atk' .. i, now, TICK_MS) then
+        and ready('atk' .. entry.idx, now, TICK_MS) then
       g_game.talk(a.words)
-      fire('atk' .. i, now)
+      fire('atk' .. entry.idx, now)
+      stats.attacks = stats.attacks + 1
       return
     end
   end
 
   -- rune on target
-  if config.rune.enabled and config.rune.item > 0 and ready('rune', now, 500) then
+  if config.rune.enabled and config.rune.item > 0 and count >= (config.rune.mobs or 1)
+      and ready('rune', now, 500) then
     g_game.useInventoryItemWith(config.rune.item, target)
     fire('rune', now)
+    stats.runes = stats.runes + 1
+  end
+end
+
+-- Exchange 100 gold -> platinum -> crystal by using the stacked coin on itself.
+-- Player:getItem() cannot be used here: it forwards to g_game.findPlayerItem,
+-- which is not bound in this client. Player:getItems() is plain Lua and works.
+local GOLD_COIN, PLATINUM_COIN = 3031, 3035
+local function runChangeGold(player, now)
+  if not ready('gold', now, 2000) then return end
+  for _, id in ipairs({ GOLD_COIN, PLATINUM_COIN }) do
+    for _, item in ipairs(player:getItems(id)) do
+      if item:getCount() >= 100 then
+        g_game.useWith(item, item)
+        fire('gold', now)
+        stats.golds = stats.golds + 1
+        return
+      end
+    end
   end
 end
 
@@ -408,6 +810,7 @@ function loop()
   local now = g_clock.millis()
   local hp = player:getHealthPercent()
   local states = player:getStates()
+  local inPz = isActive(states, PlayerStates.Pz)
 
   -- 1) spell healing (priority order, one per tick)
   local healed = false
@@ -415,6 +818,7 @@ function loop()
     if h.enabled and h.words ~= '' and hp <= h.hp and ready('heal', now, TICK_MS) then
       g_game.talk(h.words)
       fire('heal', now)
+      stats.heals = stats.heals + 1
       healed = true
       break
     end
@@ -425,6 +829,7 @@ function loop()
       and hp <= config.potHp.hp and ready('potHp', now, 1000) then
     g_game.useInventoryItem(config.potHp.item)
     fire('potHp', now)
+    stats.potions = stats.potions + 1
   end
 
   -- 3) mana potion
@@ -432,14 +837,15 @@ function loop()
       and manaPercent(player) <= config.potMana.mana and ready('potMana', now, 1000) then
     g_game.useInventoryItem(config.potMana.item)
     fire('potMana', now)
+    stats.potions = stats.potions + 1
   end
 
   -- 4) auto haste
   if config.autoHaste and config.hasteWords ~= '' and not isActive(states, PlayerStates.Haste) then
-    local inPz = isActive(states, PlayerStates.Pz)
     if (not inPz or config.hastePz) and ready('haste', now, 1000) then
       g_game.talk(config.hasteWords)
       fire('haste', now)
+      stats.hastes = stats.hastes + 1
     end
   end
 
@@ -447,8 +853,31 @@ function loop()
   if config.autoEat and config.foodItem > 0 and ready('eat', now, 30000) then
     g_game.useInventoryItem(config.foodItem)
     fire('eat', now)
+    stats.foods = stats.foods + 1
   end
 
-  -- 6) attack / shooter / auto target
+  -- 6) change gold
+  if config.changeGold then runChangeGold(player, now) end
+
+  -- 7) mana training: only while safe in a protection zone, above the chosen
+  -- mana threshold, so it never competes with combat for mana.
+  if config.manaTrain.enabled and inPz and config.manaTrain.words ~= ''
+      and manaPercent(player) >= (config.manaTrain.pct or 100)
+      and ready('manaTrain', now, 2000) then
+    g_game.talk(config.manaTrain.words)
+    fire('manaTrain', now)
+    stats.manaTrains = stats.manaTrains + 1
+  end
+
+  -- 8) exercise training: use the exercise weapon on yourself (training dummy
+  -- users target the dummy manually; the item handles the rest).
+  if config.exTrain.enabled and config.exTrain.item > 0 and inPz
+      and ready('exTrain', now, 2000) then
+    g_game.useInventoryItemWith(config.exTrain.item, player)
+    fire('exTrain', now)
+    stats.exTrains = stats.exTrains + 1
+  end
+
+  -- 9) attack / shooter / auto target
   runCaster(player, states, now)
 end
