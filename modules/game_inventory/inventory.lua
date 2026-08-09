@@ -150,12 +150,19 @@ end
 local DEBUG_INVENTORY = true
 
 local function inventoryEvent(player, slot, item, oldItem)
+    -- EventController:execute() with no name calls every handler with no
+    -- arguments. There is nothing to update for a slotless call, and the panel
+    -- is refreshed separately right after.
+    if slot == nil then
+        return
+    end
+
     -- Take the slot's contents from the player rather than from the event
     -- payload. LocalPlayer::setInventoryItem stores the new value before it
     -- signals, so this is authoritative, and a caller passing a stale item can
     -- no longer leave a slot showing gear that has been taken off.
     player = player or g_game.getLocalPlayer()
-    if player and player.getInventoryItem and slot then
+    if player and player.getInventoryItem then
         item = player:getInventoryItem(slot)
     end
 
@@ -325,6 +332,21 @@ inventoryController:setUI('inventory', modules.game_interface.getMainRightPanel(
 function inventoryController:onInit()
     refreshInventory_panel()
     local ui = getInventoryUi()
+
+    -- Independent probe on the raw signal, connected once at module init rather
+    -- than through the controller's game-start registration. If an unequip logs
+    -- INV-RAW but not INVENTORY the controller registration is at fault; if
+    -- neither appears the client is never told the slot was emptied.
+    if DEBUG_INVENTORY then
+        connect(LocalPlayer, {
+            onInventoryChange = function(player, slot, item, oldItem)
+                g_logger.info(('[INV-RAW] slot %s -> %s (was %s)'):format(
+                    tostring(slot),
+                    item and tostring(item:getId()) or 'empty',
+                    oldItem and tostring(oldItem:getId()) or 'empty'))
+            end
+        })
+    end
 
     connect(inventoryController.ui.onPanel.pvp, {
         onCheckChange = onSetSafeFight
