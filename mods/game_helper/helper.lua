@@ -192,6 +192,8 @@ function onGameStart()
     if name then name:setText(player:getName()) end
     updatePreview(player)
   end
+  -- vocation is only known once in game, so the stance list is built here
+  buildStanceGrid()
   refreshStatus()
 end
 
@@ -882,8 +884,12 @@ function buildStanceGrid()
   grid:destroyChildren()
   stanceButtons = {}
 
+  -- Only the stances this character can actually cast, exactly as the
+  -- reference shows: a sorcerer sees the three Master stances, not all nine.
   local names = {}
-  for name in pairs(STANCE_NAMES) do table.insert(names, name) end
+  for _, spell in ipairs(spellsForVocation()) do
+    if STANCE_NAMES[spell.name] then table.insert(names, spell.name) end
+  end
   table.sort(names)
 
   local perRow, cell, gap = 5, 34, 4
@@ -892,6 +898,10 @@ function buildStanceGrid()
     local info = (SpellInfo[SPELL_PROFILE] or {})[name]
     if info then
       local btn = g_ui.createWidget('RTCStanceSlot', grid)
+      -- Without explicit anchors a child of a plain Panel ignores its margins
+      -- and every button lands on the same spot, which looked like one icon.
+      btn:addAnchor(AnchorTop, 'parent', AnchorTop)
+      btn:addAnchor(AnchorLeft, 'parent', AnchorLeft)
       local col, row = shown % perRow, math.floor(shown / perRow)
       btn:setMarginLeft(col * (cell + gap))
       btn:setMarginTop(row * (cell + gap))
@@ -919,6 +929,11 @@ function buildStanceGrid()
       shown = shown + 1
     end
   end
+
+  -- shrink to the rows actually used so the rune section sits right under it
+  local rows = math.max(1, math.ceil(shown / perRow))
+  grid:setHeight(rows * cell + (rows - 1) * gap)
+  grid:setWidth(math.min(shown, perRow) * cell + math.max(0, math.min(shown, perRow) - 1) * gap)
 
   refreshStanceSelection()
 end
@@ -979,7 +994,6 @@ function populateUI()
   for i = 1, #config.heals do
     local h = config.heals[i]
     setStepper('heal' .. i .. 'Hp', h.hp or 0)
-    setChecked('heal' .. i .. 'Box', h.enabled)
     setSpellSlot('heal' .. i .. 'Slot', h.icon, h.words)
   end
 
@@ -987,7 +1001,6 @@ function populateUI()
   for i, p in ipairs(config.potions) do
     setSlot('pot' .. i .. 'Slot', p.item)
     setStepper(potStepper[i], p.pct or 0)
-    setChecked('pot' .. i .. 'Box', p.enabled)
     refreshPotionKind(i)
   end
 
@@ -1038,14 +1051,12 @@ function saveFromUI()
 
   for i = 1, #config.heals do
     config.heals[i].hp      = getStepper('heal' .. i .. 'Hp', config.heals[i].hp)
-    config.heals[i].enabled = isChecked('heal' .. i .. 'Box')
   end
 
   local potStepperIds = { 'pot1Hp', 'pot2Hp', 'pot3Mana' }
   for i, p in ipairs(config.potions) do
     p.item    = getSlot('pot' .. i .. 'Slot', p.item)
     p.pct     = getStepper(potStepperIds[i], p.pct)
-    p.enabled = isChecked('pot' .. i .. 'Box')
   end
 
   config.manaTrain.enabled = isChecked('manaTrainBox')
@@ -1453,7 +1464,7 @@ function loop()
   -- 1) spell healing (priority order, one per tick)
   local healed = false
   for i, h in ipairs(config.heals) do
-    if h.enabled and h.words ~= '' and hp <= h.hp and ready('heal', now, TICK_MS) then
+    if h.words ~= '' and hp <= h.hp and ready('heal', now, TICK_MS) then
       g_game.talk(h.words)
       fire('heal', now)
       stats.heals = stats.heals + 1
@@ -1470,7 +1481,7 @@ function loop()
     local isMana = p.kind == 'mana'
     local level = isMana and mana or hp
     local blocked = isMana and false or (healed or drankHealth)
-    if p.enabled and p.item > 0 and not blocked and level <= p.pct
+    if p.item > 0 and not blocked and level <= p.pct
         and ready('pot' .. i, now, 1000) then
       -- Potions are multi-use: they have to be used ON the drinker. Plain
       -- useInventoryItem() has no target and the server answers

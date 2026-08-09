@@ -434,17 +434,11 @@ MainWindow
       anchors.verticalCenter: heal1Slot.verticalCenter
       anchors.left: heal1Slot.right
       margin-left: 6
-    RTCCheck
-      id: heal1Box
-      anchors.verticalCenter: heal1Slot.verticalCenter
-      anchors.left: heal1Hp.right
-      margin-left: 6
-      width: 16
     RTCInfo
       id: heal1Info
       anchors.verticalCenter: heal1Slot.verticalCenter
-      anchors.left: heal1Box.right
-      margin-left: 2
+      anchors.left: heal1Hp.right
+      margin-left: 6
       tooltip: Cast these words when your health drops to the set percent.
 
     RTCSpellSlot
@@ -457,17 +451,11 @@ MainWindow
       anchors.verticalCenter: heal2Slot.verticalCenter
       anchors.left: heal2Slot.right
       margin-left: 6
-    RTCCheck
-      id: heal2Box
-      anchors.verticalCenter: heal2Slot.verticalCenter
-      anchors.left: heal2Hp.right
-      margin-left: 6
-      width: 16
     RTCInfo
       id: heal2Info
       anchors.verticalCenter: heal2Slot.verticalCenter
-      anchors.left: heal2Box.right
-      margin-left: 2
+      anchors.left: heal2Hp.right
+      margin-left: 6
       tooltip: Cast these words when your health drops to the set percent.
 
     RTCSpellSlot
@@ -480,17 +468,11 @@ MainWindow
       anchors.verticalCenter: heal3Slot.verticalCenter
       anchors.left: heal3Slot.right
       margin-left: 6
-    RTCCheck
-      id: heal3Box
-      anchors.verticalCenter: heal3Slot.verticalCenter
-      anchors.left: heal3Hp.right
-      margin-left: 6
-      width: 16
     RTCInfo
       id: heal3Info
       anchors.verticalCenter: heal3Slot.verticalCenter
-      anchors.left: heal3Box.right
-      margin-left: 2
+      anchors.left: heal3Hp.right
+      margin-left: 6
       tooltip: Cast these words when your health drops to the set percent.
 
     // --- potion healing
@@ -527,17 +509,11 @@ MainWindow
       anchors.verticalCenter: pot1Slot.verticalCenter
       anchors.left: pot1Slot.right
       margin-left: 6
-    RTCCheck
-      id: pot1Box
-      anchors.verticalCenter: pot1Slot.verticalCenter
-      anchors.left: pot1Hp.right
-      margin-left: 6
-      width: 16
     RTCInfo
       id: pot1Info
       anchors.verticalCenter: pot1Slot.verticalCenter
-      anchors.left: pot1Box.right
-      margin-left: 2
+      anchors.left: pot1Hp.right
+      margin-left: 6
       tooltip: Drag a health potion here. Used when health drops to the set percent.
 
     RTCSlot
@@ -551,17 +527,11 @@ MainWindow
       anchors.verticalCenter: pot2Slot.verticalCenter
       anchors.left: pot2Slot.right
       margin-left: 6
-    RTCCheck
-      id: pot2Box
-      anchors.verticalCenter: pot2Slot.verticalCenter
-      anchors.left: pot2Hp.right
-      margin-left: 6
-      width: 16
     RTCInfo
       id: pot2Info
       anchors.verticalCenter: pot2Slot.verticalCenter
-      anchors.left: pot2Box.right
-      margin-left: 2
+      anchors.left: pot2Hp.right
+      margin-left: 6
       tooltip: A second health potion, used when the first is not enough.
 
     RTCSlot
@@ -575,17 +545,11 @@ MainWindow
       anchors.verticalCenter: pot3Slot.verticalCenter
       anchors.left: pot3Slot.right
       margin-left: 6
-    RTCCheck
-      id: pot3Box
-      anchors.verticalCenter: pot3Slot.verticalCenter
-      anchors.left: pot3Mana.right
-      margin-left: 6
-      width: 16
     RTCInfo
       id: pot3Info
       anchors.verticalCenter: pot3Slot.verticalCenter
-      anchors.left: pot3Box.right
-      margin-left: 2
+      anchors.left: pot3Mana.right
+      margin-left: 6
       tooltip: Drag a mana potion here. Used when mana drops to the set percent.
 
     // --- mana training
@@ -953,7 +917,7 @@ MainWindow
       anchors.top: presetCombo.bottom
       anchors.left: parent.left
       margin-left: 400
-      margin-top: 16
+      margin-top: 8
       text: Stance
 
     // Every stance from every vocation is listed here; helper.lua fills the
@@ -972,7 +936,7 @@ MainWindow
       anchors.top: stanceGrid.bottom
       anchors.left: parent.left
       margin-left: 400
-      margin-top: 14
+      margin-top: 10
       text: Rune
     RTCColumnLabel
       id: runeColCreatures
@@ -1047,7 +1011,7 @@ MainWindow
       anchors.top: rune2Slot.bottom
       anchors.left: parent.left
       margin-left: 400
-      margin-top: 16
+      margin-top: 10
       width: 230
       text: Combo in priority order
 
@@ -1056,7 +1020,7 @@ MainWindow
       anchors.top: comboOrderBox.bottom
       anchors.left: parent.left
       margin-left: 400
-      margin-top: 4
+      margin-top: 2
       width: 230
       text: Hotkey has priority
 
@@ -1065,7 +1029,7 @@ MainWindow
       anchors.top: hotkeyPriorityBox.bottom
       anchors.left: parent.left
       margin-left: 400
-      margin-top: 4
+      margin-top: 2
       width: 186
       text: Auto Target
 
@@ -1080,7 +1044,7 @@ MainWindow
       anchors.top: autoTargetBox.bottom
       anchors.left: parent.left
       margin-left: 400
-      margin-top: 4
+      margin-top: 2
       width: 186
       text: Enable Shooter Helper
 
@@ -1095,7 +1059,7 @@ MainWindow
       anchors.top: shooterBox.bottom
       anchors.left: parent.left
       margin-left: 400
-      margin-top: 10
+      margin-top: 6
       width: 200
       text: Set Key (Target / Shooter)
       @onClick: modules.game_helper.setTargetKey()
