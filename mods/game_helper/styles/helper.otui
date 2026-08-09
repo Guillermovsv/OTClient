@@ -638,17 +638,20 @@ MainWindow
 
     RTCSep
       id: healSep
-      anchors.top: exTrainSlot.bottom
+      // Anchored to the spell column, which is the tallest of the three: the
+      // training column ends higher, so hanging the rule off it put the line
+      // hard against the bottom row.
+      anchors.top: heal3Slot.bottom
       anchors.left: parent.left
       anchors.right: parent.right
-      margin-top: 10
+      margin-top: 18
 
     // ---- Sio friend group
     RTCColumnLabel
       id: friendTitle
       anchors.top: healSep.bottom
       anchors.left: parent.left
-      margin-top: 8
+      margin-top: 18
       text: Select a Friend
     RTCInfo
       id: friendInfo
@@ -681,7 +684,7 @@ MainWindow
       anchors.top: healSep.bottom
       anchors.left: parent.left
       margin-left: 140
-      margin-top: 8
+      margin-top: 18
       text: Sio Friend List
 
     RTCSmallButton
@@ -768,7 +771,7 @@ MainWindow
       anchors.top: healSep.bottom
       anchors.left: parent.left
       margin-left: 300
-      margin-top: 8
+      margin-top: 18
       text: Select a Friend
     RTCInfo
       id: friend2Info
@@ -802,7 +805,7 @@ MainWindow
       anchors.top: healSep.bottom
       anchors.left: parent.left
       margin-left: 440
-      margin-top: 8
+      margin-top: 18
       text: Gran Sio Friend List
 
     RTCSmallButton

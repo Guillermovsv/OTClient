@@ -693,8 +693,12 @@ local function setSpellSlot(id, clientId, words)
   local ph = slot:getChildById('placeholder')
   if ph then
     if hasSpell and clientId <= 0 then
-      -- assigned but iconless: show the words so the slot does not read empty
-      ph:setText(words:sub(1, 8))
+      -- Assigned but iconless. The slot is only 34px wide, so spell out the
+      -- initials rather than clipping the words to something unreadable; the
+      -- tooltip still carries the full words.
+      local initials = ''
+      for word in words:gmatch('%a+') do initials = initials .. word:sub(1, 1):upper() end
+      ph:setText(initials ~= '' and initials or '*')
       ph:setVisible(true)
     else
       ph:setText('. . . .')
