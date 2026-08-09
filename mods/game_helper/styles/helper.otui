@@ -82,11 +82,11 @@ RTCSep < HorizontalSeparator
 
 // A percent stepper: [<] [ nn% ] [>]  (arrows are deliberately narrow)
 RTCStepper < UIWidget
-  size: 62 20
+  size: 68 20
   Button
     id: dec
     text: <
-    width: 5
+    width: 8
     height: 18
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
@@ -105,7 +105,7 @@ RTCStepper < UIWidget
   Button
     id: inc
     text: >
-    width: 5
+    width: 8
     height: 18
     anchors.left: spin.right
     anchors.verticalCenter: parent.verticalCenter

@@ -115,6 +115,7 @@ function init()
   wireSteppers()
   wireCombos()
   wireSlots()
+  wirePotionBadges()
   populateUI()
   refreshPresetCombo()
   selectTab('healing')
@@ -612,17 +613,44 @@ local function setSpellSlot(id, clientId, words)
   slot:setTooltip(words and words ~= '' and words or '')
 end
 
+-- The client and the spell library number vocations differently, and the two
+-- must not be compared directly.
+--
+--   getVocation() returns VocationsClient (gamelib/creature.lua):
+--     Knight 1, Paladin 2, Sorcerer 3, Druid 4, Monk 5, promoted 11-15
+--   SpellInfo.vocations uses the spell-library numbering:
+--     Sorcerer 1/5, Druid 2/6, Paladin 3/7, Knight 4/8, Monk 9/10
+--
+-- Comparing them raw meant a Sorcerer (client id 3) matched vocations {3, 7},
+-- which is Paladin -- so a sorcerer was offered paladin spells.
+local CLIENT_VOCATION_TO_SPELL = {
+  [VocationsClient.Knight]         = { 4, 8 },
+  [VocationsClient.EliteKnight]    = { 4, 8 },
+  [VocationsClient.Paladin]        = { 3, 7 },
+  [VocationsClient.RoyalPaladin]   = { 3, 7 },
+  [VocationsClient.Sorcerer]       = { 1, 5 },
+  [VocationsClient.MasterSorcerer] = { 1, 5 },
+  [VocationsClient.Druid]          = { 2, 6 },
+  [VocationsClient.ElderDruid]     = { 2, 6 },
+  [VocationsClient.Monk]           = { 9, 10 },
+  [VocationsClient.ExaltedMonk]    = { 9, 10 },
+}
+
 -- Spells the logged in character can actually use, by vocation.
 local function spellsForVocation()
   local player = g_game.getLocalPlayer()
-  local vocation = player and player:getVocation()
+  local mine = player and CLIENT_VOCATION_TO_SPELL[player:getVocation()]
+
   local out = {}
   for name, info in pairs(SpellInfo[SPELL_PROFILE] or {}) do
     local ok = true
-    if vocation and info.vocations then
+    if mine and type(info.vocations) == 'table' then
       ok = false
-      for _, v in ipairs(info.vocations) do
-        if v == vocation then ok = true break end
+      for _, wanted in ipairs(mine) do
+        for _, v in ipairs(info.vocations) do
+          if v == wanted then ok = true break end
+        end
+        if ok then break end
       end
     end
     if ok then table.insert(out, { name = name, info = info }) end
@@ -835,6 +863,39 @@ function wireSlots()
   end
 end
 
+-- The badge beside each potion row shows which stat that row watches, and
+-- clicking it switches: red drinks on health, blue drinks on mana.
+local POTION_KIND_COLOR = { hp = '#cc4444', mana = '#4477cc' }
+
+function refreshPotionKind(i)
+  local row = config.potions[i]
+  if not row then return end
+  local badge = w('pot' .. i .. 'Info')
+  if not badge then return end
+  local isMana = row.kind == 'mana'
+  badge:setColor(isMana and POTION_KIND_COLOR.mana or POTION_KIND_COLOR.hp)
+  badge:setTooltip(isMana
+    and tr('Drinks when mana drops to the set percent. Click for health.')
+    or tr('Drinks when health drops to the set percent. Click for mana.'))
+end
+
+function togglePotionKind(i)
+  local row = config.potions[i]
+  if not row then return end
+  row.kind = (row.kind == 'mana') and 'hp' or 'mana'
+  refreshPotionKind(i)
+  saveConfig()
+end
+
+function wirePotionBadges()
+  for i = 1, #config.potions do
+    local badge = w('pot' .. i .. 'Info')
+    if badge then
+      badge.onClick = function() togglePotionKind(i) end
+    end
+  end
+end
+
 function populateUI()
   if not helperWindow then return end
 
@@ -865,6 +926,7 @@ function populateUI()
     setSlot('pot' .. i .. 'Slot', p.item)
     setStepper(potStepper[i], p.pct or 0)
     setChecked('pot' .. i .. 'Box', p.enabled)
+    refreshPotionKind(i)
   end
 
   setChecked('manaTrainBox', config.manaTrain.enabled)
