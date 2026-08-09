@@ -145,7 +145,28 @@ local function combatEvent()
     end
 end
 
+-- Set to true to log every inventory slot change. Tells apart "the server
+-- never sent the clear" from "the client got it and did not redraw".
+local DEBUG_INVENTORY = true
+
 local function inventoryEvent(player, slot, item, oldItem)
+    -- Take the slot's contents from the player rather than from the event
+    -- payload. LocalPlayer::setInventoryItem stores the new value before it
+    -- signals, so this is authoritative, and a caller passing a stale item can
+    -- no longer leave a slot showing gear that has been taken off.
+    player = player or g_game.getLocalPlayer()
+    if player and player.getInventoryItem and slot then
+        item = player:getInventoryItem(slot)
+    end
+
+    if DEBUG_INVENTORY then
+        g_logger.info(('[INVENTORY] slot %s -> %s (was %s)%s'):format(
+            tostring(slot),
+            item and tostring(item:getId()) or 'empty',
+            oldItem and tostring(oldItem:getId()) or 'empty',
+            inventoryShrink and ' [skipped: panel shrunk]' or ''))
+    end
+
     if inventoryShrink then
         return
     end
