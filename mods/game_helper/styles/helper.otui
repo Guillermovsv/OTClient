@@ -37,6 +37,24 @@ RTCSlot < Item
     color: #6a6a6a
     phantom: true
 
+// One stance in the stance grid. The selected one carries a yellow border.
+RTCStanceSlot < UIWidget
+  size: 34 34
+  image-source: /images/ui/item
+  image-border: 1
+  focusable: false
+
+  UIWidget
+    id: icon
+    anchors.centerIn: parent
+    size: 32 32
+    image-source: /images/game/spells/spell-icons-32x32
+    phantom: true
+
+  $on:
+    border-width: 2
+    border-color: #ffd700
+
 // Spell slots draw from the spell atlas by clientId rather than holding an
 // item, so they cannot be UIItem. Clicking one opens the spell picker.
 RTCSpellSlot < UIWidget
@@ -84,7 +102,7 @@ RTCSep < HorizontalSeparator
 // The % is its own label rather than part of the spin box text, which only
 // accepts digits.
 RTCStepper < UIWidget
-  size: 76 20
+  size: 60 20
   Button
     id: dec
     text: <
@@ -94,10 +112,9 @@ RTCStepper < UIWidget
     anchors.verticalCenter: parent.verticalCenter
   SpinBox
     id: spin
-    width: 38
+    width: 23
     height: 18
-    text-align: right
-    padding-right: 2
+    text-align: center
     anchors.left: dec.right
     anchors.verticalCenter: parent.verticalCenter
     margin-left: 2
@@ -311,17 +328,10 @@ MainWindow
       width: 110
       text: PZ Cast
 
-    TextEdit
-      id: hasteWords
-      anchors.top: hasteSlot.bottom
-      anchors.left: parent.left
-      margin-top: 6
-      width: 176
-      height: 20
 
     RTCSep
       id: sideSep2
-      anchors.top: hasteWords.bottom
+      anchors.top: hasteSlot.bottom
       anchors.left: parent.left
       anchors.right: parent.right
       margin-top: 10
@@ -503,19 +513,20 @@ MainWindow
       anchors.top: spellHealTitle.top
       anchors.bottom: heal3Slot.bottom
       anchors.left: parent.left
-      margin-left: 170
+      margin-left: 152
 
     VerticalSeparator
       id: healSepB
       anchors.top: spellHealTitle.top
       anchors.bottom: heal3Slot.bottom
       anchors.left: parent.left
-      margin-left: 360
+      margin-left: 324
 
     RTCColumnLabel
-      id: potHealTitle      anchors.top: parent.top
+      id: potHealTitle
+      anchors.top: parent.top
       anchors.left: parent.left
-      margin-left: 190
+      margin-left: 172
       text: Potion Healing
 
     // Rows 1-2 are health potions, row 3 is a mana potion.
@@ -523,7 +534,7 @@ MainWindow
       id: pot1Slot
       anchors.top: potHealTitle.bottom
       anchors.left: parent.left
-      margin-left: 190
+      margin-left: 172
       margin-top: 8
     RTCStepper
       id: pot1Hp
@@ -547,7 +558,7 @@ MainWindow
       id: pot2Slot
       anchors.top: pot1Slot.bottom
       anchors.left: parent.left
-      margin-left: 190
+      margin-left: 172
       margin-top: 8
     RTCStepper
       id: pot2Hp
@@ -571,7 +582,7 @@ MainWindow
       id: pot3Slot
       anchors.top: pot2Slot.bottom
       anchors.left: parent.left
-      margin-left: 190
+      margin-left: 172
       margin-top: 8
     RTCStepper
       id: pot3Mana
@@ -596,14 +607,14 @@ MainWindow
       id: manaTrainTitle
       anchors.top: parent.top
       anchors.left: parent.left
-      margin-left: 380
+      margin-left: 344
       text: Mana Training
 
     RTCSpellSlot
       id: manaTrainSlot
       anchors.top: manaTrainTitle.bottom
       anchors.left: parent.left
-      margin-left: 380
+      margin-left: 344
       margin-top: 8
     RTCCheck
       id: manaTrainBox
@@ -628,9 +639,9 @@ MainWindow
     // --- exercise training
     RTCColumnLabel
       id: exTrainTitle
-      anchors.top: manaTrainWords.bottom
+      anchors.top: manaTrainSlot.bottom
       anchors.left: parent.left
-      margin-left: 380
+      margin-left: 344
       margin-top: 14
       text: Exercise Training
 
@@ -638,7 +649,7 @@ MainWindow
       id: exTrainSlot
       anchors.top: exTrainTitle.bottom
       anchors.left: parent.left
-      margin-left: 380
+      margin-left: 344
       margin-top: 8
     RTCCheck
       id: exTrainBox
@@ -949,100 +960,99 @@ MainWindow
       anchors.top: colSpell.top
       anchors.bottom: atk5Slot.bottom
       anchors.left: parent.left
-      margin-left: 420
+      margin-left: 380
 
     RTCColumnLabel
-      id: stanceTitle      anchors.top: presetCombo.bottom
+      id: stanceTitle
+      anchors.top: presetCombo.bottom
       anchors.left: parent.left
-      margin-left: 440
+      margin-left: 400
       margin-top: 16
       text: Stance
 
-    RTCSpellSlot
-      id: stance1Slot
+    // Every stance from every vocation is listed here; helper.lua fills the
+    // grid and keeps exactly one selected.
+    Panel
+      id: stanceGrid
       anchors.top: stanceTitle.bottom
       anchors.left: parent.left
-      margin-left: 440
+      margin-left: 400
       margin-top: 6
-    RTCSpellSlot
-      id: stance2Slot
-      anchors.top: stance1Slot.top
-      anchors.left: stance1Slot.right
-      margin-left: 8
+      size: 190 76
 
     // --- rune (right column)
     RTCColumnLabel
       id: runeTitle
       anchors.top: stance1Slot.bottom
       anchors.left: parent.left
-      margin-left: 440
+      margin-left: 400
       margin-top: 14
       text: Rune
     RTCColumnLabel
       id: runeColCreatures
       anchors.top: runeTitle.top
       anchors.left: parent.left
-      margin-left: 494
+      margin-left: 452
       text: Creatures
     RTCColumnLabel
       id: runeColPriority
       anchors.top: runeTitle.top
       anchors.left: parent.left
-      margin-left: 578
+      margin-left: 528
       text: Priority
 
     RTCSlot
       id: runeSlot
       anchors.top: runeTitle.bottom
       anchors.left: parent.left
-      margin-left: 440
+      margin-left: 400
       margin-top: 6
     ComboBox
       id: runeMobs
       anchors.verticalCenter: runeSlot.verticalCenter
       anchors.left: parent.left
-      margin-left: 494
+      margin-left: 452
       width: 62
       height: 20
     ComboBox
       id: runePrio
       anchors.verticalCenter: runeSlot.verticalCenter
       anchors.left: parent.left
-      margin-left: 578
+      margin-left: 528
       width: 62
       height: 20
     RTCCheck
       id: runeBox
       anchors.verticalCenter: runeSlot.verticalCenter
       anchors.left: parent.left
-      margin-left: 628
+      margin-left: 600
       width: 16
 
     RTCSlot
       id: rune2Slot
       anchors.top: runeSlot.bottom
       anchors.left: parent.left
-      margin-left: 440
+      margin-left: 400
       margin-top: 6
     ComboBox
       id: rune2Mobs
       anchors.verticalCenter: rune2Slot.verticalCenter
       anchors.left: parent.left
-      margin-left: 494
+      margin-left: 452
       width: 62
       height: 20
     ComboBox
       id: rune2Prio
       anchors.verticalCenter: rune2Slot.verticalCenter
       anchors.left: parent.left
-      margin-left: 578
+      margin-left: 528
       width: 62
       height: 20
     RTCCheck
       id: rune2Box
       anchors.verticalCenter: rune2Slot.verticalCenter
       anchors.left: parent.left
-      margin-left: 628
+      margin-left: 600
       width: 16
 
     // --- toggles
@@ -1050,7 +1060,7 @@ MainWindow
       id: comboOrderBox
       anchors.top: rune2Slot.bottom
       anchors.left: parent.left
-      margin-left: 440
+      margin-left: 400
       margin-top: 16
       width: 230
       text: Combo in priority order
@@ -1059,7 +1069,7 @@ MainWindow
       id: hotkeyPriorityBox
       anchors.top: comboOrderBox.bottom
       anchors.left: parent.left
-      margin-left: 440
+      margin-left: 400
       margin-top: 4
       width: 230
       text: Hotkey has priority
@@ -1068,7 +1078,7 @@ MainWindow
       id: autoTargetBox
       anchors.top: hotkeyPriorityBox.bottom
       anchors.left: parent.left
-      margin-left: 440
+      margin-left: 400
       margin-top: 4
       width: 186
       text: Auto Target
@@ -1083,7 +1093,7 @@ MainWindow
       id: shooterBox
       anchors.top: autoTargetBox.bottom
       anchors.left: parent.left
-      margin-left: 440
+      margin-left: 400
       margin-top: 4
       width: 186
       text: Enable Shooter Helper
@@ -1098,7 +1108,7 @@ MainWindow
       id: targetKeyBtn
       anchors.top: shooterBox.bottom
       anchors.left: parent.left
-      margin-left: 440
+      margin-left: 400
       margin-top: 10
       width: 200
       text: Set Key (Target / Shooter)
@@ -1110,12 +1120,13 @@ MainWindow
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.bottom: parent.bottom
-    height: 26
+    height: 30
 
     RTCSmallButton
       id: helperKeyBtn
       anchors.left: parent.left
-      anchors.verticalCenter: parent.verticalCenter
+      anchors.top: parent.top
+      margin-top: 4
       width: 110
       text: Set Helper Key
       @onClick: modules.game_helper.setHelperKey()
@@ -1123,7 +1134,7 @@ MainWindow
     RTCSmallButton
       id: exportBtn
       anchors.left: helperKeyBtn.right
-      anchors.verticalCenter: parent.verticalCenter
+      anchors.top: helperKeyBtn.top
       margin-left: 6
       width: 80
       text: Export
@@ -1132,7 +1143,7 @@ MainWindow
     RTCSmallButton
       id: importBtn
       anchors.left: exportBtn.right
-      anchors.verticalCenter: parent.verticalCenter
+      anchors.top: helperKeyBtn.top
       margin-left: 6
       width: 80
       text: Import

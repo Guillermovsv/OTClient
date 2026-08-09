@@ -100,6 +100,12 @@ function refresh()
     end
 end
 
+-- The stance the server currently reports as active, or nil. Read by the RTC
+-- Helper so it can tell whether the stance you picked is already up.
+function getActiveStance()
+    return activeStance
+end
+
 function controllerStances:onInit()
     ProtocolGame.registerExtendedOpcode(STANCE_OPCODE, function(protocol, opcode, buffer)
         local state, stanceId = buffer:match('^(%a+)|(.+)$')

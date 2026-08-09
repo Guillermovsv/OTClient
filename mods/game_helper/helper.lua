@@ -61,8 +61,8 @@ local function defaultConfig()
     autoEat = false, foodItem = 3725,
     changeGold = false, autoReconnect = false,
     comboOrder = false, hotkeyPriority = false,
-    -- stance slots hold spells, not items
-    stance = { words1 = '', icon1 = 0, words2 = '', icon2 = 0 },
+    -- one stance may be selected, from any vocation
+    stance = { name = '', words = '', icon = 0 },
     heals = {
       { enabled = false, words = '', hp = 80, icon = 0 },
       { enabled = false, words = '', hp = 60, icon = 0 },
@@ -853,30 +853,65 @@ function wireSlots()
     end
   end
 
-  -- Stance slots offer only the stance spells, still filtered by vocation.
-  for i, id in ipairs({ 'stance1Slot', 'stance2Slot' }) do
-    local slot = w(id)
-    if slot then
-      local entry = {
-        slot  = id,
-        get   = function() return config.stance end,
-        words = 'words' .. i,
-        icon  = 'icon' .. i,
-      }
-      slot.onMouseRelease = function(self, _, mouseButton)
-        if mouseButton == MouseRightButton then
-          config.stance[entry.words] = ''
-          config.stance[entry.icon] = 0
-          setSpellSlot(id, 0, '')
-          saveConfig()
-          return true
-        elseif mouseButton == MouseLeftButton then
-          openSpellPicker(entry, FILTER_STANCE)
-          return true
-        end
-        return false
+  buildStanceGrid()
+end
+
+-- Every stance, from every vocation, laid out in a grid. Exactly one can be
+-- selected; the selection carries the yellow border. Clicking the selected one
+-- again clears it.
+local stanceButtons = {}
+
+function buildStanceGrid()
+  local grid = w('stanceGrid')
+  if not grid then return end
+
+  grid:destroyChildren()
+  stanceButtons = {}
+
+  local names = {}
+  for name in pairs(STANCE_NAMES) do table.insert(names, name) end
+  table.sort(names)
+
+  local perRow, cell, gap = 5, 34, 4
+  local shown = 0
+  for _, name in ipairs(names) do
+    local info = (SpellInfo[SPELL_PROFILE] or {})[name]
+    if info then
+      local btn = g_ui.createWidget('RTCStanceSlot', grid)
+      local col, row = shown % perRow, math.floor(shown / perRow)
+      btn:setMarginLeft(col * (cell + gap))
+      btn:setMarginTop(row * (cell + gap))
+      btn:setTooltip(name .. "  '" .. (info.words or '') .. "'")
+
+      local icon = btn:getChildById('icon')
+      if icon and tonumber(info.clientId) then
+        icon:setImageClip(Spells.getImageClip(tonumber(info.clientId), SPELL_PROFILE))
       end
+
+      btn.stanceName = name
+      btn.onClick = function()
+        if config.stance.name == name then
+          config.stance.name, config.stance.words, config.stance.icon = '', '', 0
+        else
+          config.stance.name  = name
+          config.stance.words = info.words or ''
+          config.stance.icon  = tonumber(info.clientId) or 0
+        end
+        refreshStanceSelection()
+        saveConfig()
+      end
+
+      stanceButtons[name] = btn
+      shown = shown + 1
     end
+  end
+
+  refreshStanceSelection()
+end
+
+function refreshStanceSelection()
+  for name, btn in pairs(stanceButtons) do
+    if btn.setOn then btn:setOn(config.stance.name == name) end
   end
 end
 
@@ -926,8 +961,7 @@ function populateUI()
   setChecked('autoReconnectBox', config.autoReconnect)
   setChecked('comboOrderBox', config.comboOrder)
   setChecked('hotkeyPriorityBox', config.hotkeyPriority)
-  setSpellSlot('stance1Slot', config.stance.icon1, config.stance.words1)
-  setSpellSlot('stance2Slot', config.stance.icon2, config.stance.words2)
+  refreshStanceSelection()
 
   for i = 1, #config.heals do
     local h = config.heals[i]
@@ -1416,6 +1450,18 @@ function loop()
 
   -- 6) change gold
   if config.changeGold then runChangeGold(player, now) end
+
+  -- 6b) keep the chosen stance up. game_stances tracks what the server says is
+  -- active, so this only recasts when the stance is actually down.
+  if config.stance.words ~= '' and ready('stance', now, 5000) then
+    local active = modules.game_stances and modules.game_stances.getActiveStance
+      and modules.game_stances.getActiveStance()
+    local want = (config.stance.name or ''):lower():gsub(' ', '_')
+    if active ~= want then
+      g_game.talk(config.stance.words)
+      fire('stance', now)
+    end
+  end
 
   -- 7) mana training: only while safe in a protection zone, above the chosen
   -- mana threshold, so it never competes with combat for mana.
