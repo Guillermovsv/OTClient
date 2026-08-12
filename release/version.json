@@ -1,8 +1,8 @@
 {
-  "version": "2026.08.11.01",
+  "version": "2026.08.12.01",
   "file": "client-windows.zip",
-  "size": 298077377,
-  "sha256": "2A1B82906E0BB2E2FD42B340F89D5E560765C5ADA94494D03959CF0D2F9A18CF",
-  "sourceCommit": "b4cdd42",
+  "size": 298077509,
+  "sha256": "42172075D83082B836AAE98287B1528E3EAD8A6CFA3E735E285D4BB0F5B99E73",
+  "sourceCommit": "089fd424",
   "channel": "/client/otc/"
 }

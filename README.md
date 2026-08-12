@@ -1,7 +1,7 @@
 # DelyriumzOT Unified Client
 
 This repository is the authoritative source for unified release
-`2026.08.11.01`. It contains the native OTClient source, tracked Lua/OTUI
+`2026.08.12.01`. It contains the native OTClient source, tracked Lua/OTUI
 loader and Helper modules, launcher/updater source, synchronized spell
 metadata, and release artwork.
 
@@ -165,6 +165,7 @@ Every client release must have one canonical, versioned instruction file under
 - [UPDATE-2026.08.05-native-monk-safe.md](client-updates/UPDATE-2026.08.05-native-monk-safe.md)
 - [UPDATE-2026.08.08-windows-build-and-connection.md](client-updates/UPDATE-2026.08.08-windows-build-and-connection.md)
 - [UPDATE-2026.08.11-unified-launcher.md](client-updates/UPDATE-2026.08.11-unified-launcher.md)
+- [UPDATE-2026.08.12-echo-raids-client.md](client-updates/UPDATE-2026.08.12-echo-raids-client.md)
 - [Master Sorcerer package](client-updates/master-sorcerer-2026-07-30/)
 
 Each package must include the runtime files, SHA256 checksums, a backup-aware
