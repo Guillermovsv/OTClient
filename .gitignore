@@ -7,6 +7,9 @@ key.pem
 # ---- Build artifacts / local outputs ----
 /build/
 /vcpkg_installed/
+/launcher/bin/
+/launcher/obj/
+/release-output/
 OTClient.app/
 *.exe
 *.exe.*

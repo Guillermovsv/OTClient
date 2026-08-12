@@ -55,16 +55,20 @@ that folder as the working directory — double-click or:
 .\otclient.exe
 ```
 
-A clean checkout is **buildable but not runnable**: the `mods/` set and the
-15.25 game/sound assets are gitignored. Copy them from a working packaged
-client before the first run, or startup fails with
-`critical: Unable to load 'client_mods' module`:
+A clean checkout includes the required `client_mods`, its support modules, and
+the RTC Helper. The 15.25 game/sound assets remain runtime-downloaded and
+gitignored. The configured `clientAssets` loader installs them to the standard
+runtime paths on first launch. For offline testing or packaging, copy only
+those assets from a working package:
 ```powershell
 $src = '..\work\standard-client'
-Copy-Item "$src\mods\*"             .\mods\         -Recurse -Force
 Copy-Item "$src\data\things\1525"   .\data\things\  -Recurse -Force
 Copy-Item "$src\data\sounds\1525"   .\data\sounds\  -Recurse -Force
 ```
+
+Build the launcher from `launcher\OtLauncher.csproj`. After the native binary
+and runtime assets are present, `tools\package_windows_release.ps1` produces
+the launcher, client ZIP, and SHA-256 manifest together.
 
 ## Alternative: Visual Studio solution (DirectX build)
 Matches RubinOT's DirectX renderer. In Developer PowerShell:
@@ -96,10 +100,10 @@ connect.
   `git -C C:\vcpkg fetch --depth 1 origin f3e10653cc27d62a37a3763cd84b38bca07c6075`
 - **`otclient.exe` not found after a successful build** → it is written to the
   **source root**, next to `init.lua`, not to `build\...\bin\`.
-- **`critical: Unable to load 'client_mods'`, or missing appearances/sounds** →
-  the `mods/` set and the `data/things/1525` + `data/sounds/1525` assets are
-  gitignored and are not in a clean checkout. Copy them from a working packaged
-  client (for example `pc-handoff/work/standard-client`).
+- **`critical: Unable to load 'client_mods'`** → the checkout is incomplete;
+  `mods/client_mods` and its support modules are tracked in this repository.
+- **Missing appearances/sounds** → allow `clientAssets` to install them, or
+  copy `data/things/1525` and `data/sounds/1525` from a working package.
 - **Character list loads but entering the game hangs, with nothing in the log**
   → **RSA key mismatch.** This is resolved; the client now ships
   `DELYRIUMZ_RSA` in `modules/gamelib/const.lua`. HTTP login on `:8088` uses no

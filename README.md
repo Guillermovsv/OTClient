@@ -1,4 +1,9 @@
-# DelyriumzOT Client (OTClient - Redemption)
+# DelyriumzOT Unified Client
+
+This repository is the authoritative source for unified release
+`2026.08.11.01`. It contains the native OTClient source, tracked Lua/OTUI
+loader and Helper modules, launcher/updater source, synchronized spell
+metadata, and release artwork.
 
 This repo now hosts the **full buildable DelyriumzOT client source** — the
 OTClient-Redemption tree wired to our server — alongside the release assets,
@@ -19,8 +24,20 @@ from *Developer PowerShell for VS 2022* in the repo root:
 ```powershell
 cmake --preset windows-release-vs2022
 cmake --build --preset windows-release-vs2022
-# output: build\windows-release-vs2022\bin\otclient.exe
+# output: .\otclient.exe
 ```
+
+Build the launcher from the repository root with:
+
+```powershell
+dotnet publish .\launcher\OtLauncher.csproj -c Release -r win-x64 `
+  --self-contained true -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true -o .\release-output\launcher
+```
+
+After the 15.25 things/sounds directories are present, create the complete
+upload set with `tools\package_windows_release.ps1`. See
+[`release/README.md`](release/README.md).
 
 ## Connecting to the server
 
@@ -147,6 +164,7 @@ Every client release must have one canonical, versioned instruction file under
 - [UPDATE-2026.08.05-canonical-spell-ids.md](client-updates/UPDATE-2026.08.05-canonical-spell-ids.md)
 - [UPDATE-2026.08.05-native-monk-safe.md](client-updates/UPDATE-2026.08.05-native-monk-safe.md)
 - [UPDATE-2026.08.08-windows-build-and-connection.md](client-updates/UPDATE-2026.08.08-windows-build-and-connection.md)
+- [UPDATE-2026.08.11-unified-launcher.md](client-updates/UPDATE-2026.08.11-unified-launcher.md)
 - [Master Sorcerer package](client-updates/master-sorcerer-2026-07-30/)
 
 Each package must include the runtime files, SHA256 checksums, a backup-aware

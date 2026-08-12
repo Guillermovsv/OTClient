@@ -4,3 +4,18 @@
 # Ship the RTC Helper (official mod), keep other user-local mods ignored.
 !/game_helper/
 !/game_helper/**
+
+# Required runtime loader and its bundled support modules. A clean checkout
+# must contain these or init.lua cannot load client_mods.
+!/client_mods/
+!/client_mods/**
+!/client_profiles/
+!/client_profiles/**
+!/client_textedit/
+!/client_textedit/**
+!/game_buttons/
+!/game_buttons/**
+!/game_itemselector/
+!/game_itemselector/**
+!/game_tasks/
+!/game_tasks/**

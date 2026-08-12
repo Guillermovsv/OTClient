@@ -231,3 +231,4 @@ std::string Application::getBuildRevision()
 }
 std::string Application::getVersion() { return ADD_QUOTES(GIT_VERSION); }
 std::string Application::getBuildCommit() { return ADD_QUOTES(GIT_BRANCH); }
+std::string Application::getBuildDate() { return ADD_QUOTES(GIT_BUILD_DATE); }

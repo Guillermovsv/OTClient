@@ -1,3 +1,4 @@
-#define GIT_BRANCH desenv
-#define GIT_VERSION 4.x
-#define GIT_COMMITS 0
+#define GIT_BRANCH b4cdd42
+#define GIT_VERSION 2026.08.11.01
+#define GIT_COMMITS 51
+#define GIT_BUILD_DATE Aug 11 2026
