@@ -1,5 +1,47 @@
 # Echo Raids Client Sprite Deployment
 
+## PENDING as of 2026-08-14: appearance flag fix, files updated but not yet built/published/uploaded
+
+`data/things/1525/appearances-custom01.dat` in this repo has been updated to
+drop the `flags.avoid` attribute on item `54267` (the echo trigger). This
+commit only updates the source-of-truth data files in this repo — **nobody
+has run the packaging script, published a GitHub release, or uploaded a
+client package to MyAAC yet.** That work is intentionally left for whoever
+picks up the client-side release next.
+
+### What changed and why
+
+- Root cause: the trigger's appearance had `flags.avoid = True`, which the
+  client maps to `ThingFlagAttrNotPathable` — the same flag real Tibia/OTClient
+  uses for hazard tiles (fire fields, traps). That made the client's
+  pathing/auto-walk require a deliberate second step to actually walk onto
+  the portal instead of a normal single walk-in.
+- Fix (made in the server-side asset-build tooling, not in this repo): the
+  build script that generates this appearance no longer sets
+  `flags.avoid`. This repo's `data/things/1525/appearances-custom01.dat` was
+  regenerated from that fixed script and copied in as-is.
+- `catalog-content.json` and `sprites-echo-raids-trigger-54267.bmp.lzma` are
+  unchanged (only the appearance flags moved, not the sprite frames or
+  catalog entry), confirmed by identical file hashes to what was already
+  committed here.
+- New SHA-256 for `appearances-custom01.dat`:
+  `ee7b7d0cb641078f89210753e9b8f7343c427fe4b1044b23a2b75c5cd4f4d30e`
+  (must match the server's copy of the same file — see
+  `otserver-push/quickstart/canary/custom-assets/appearances.dat` /
+  `otserver-push/ECHO_RAIDS_CLIENT_SPRITE_DEPLOY.md` in the private
+  `otserver-push` repo for the server-side half of this change).
+
+### What still needs to happen
+
+1. Build/verify `otclient.exe` and the rest of the runtime client as usual
+   (no native/C++ change was needed for this fix, only the appearance data).
+2. Run `launcher/scripts/package_client_release.sh` from the OTC workspace to
+   publish a new `client-windows.zip` release to this repo.
+3. Upload the new package through MyAAC (**Tools -> Client Uploads**).
+4. Verify in-game that stepping on an echo trigger now works on the **first**
+   step, not the second, and that the portal only disappears when a raid
+   actually spawns.
+
 ## Current Server Contract
 
 - Echo Raid trigger item id: `54267`
